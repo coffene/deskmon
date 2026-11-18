@@ -8,8 +8,8 @@ Deskmon brings live information from your PC to an Android phone display. Built 
 
 | Component | File | Platform |
 | --- | --- | --- |
-| Deskmon server | `windows-server/dist/DeskmonServer.exe` | Windows 10/11 |
-| Deskmon | `android-app/dist/Deskmon-release.apk` | Android 7.0+ |
+| Deskmon server | [DeskmonServer.exe](https://github.com/coffene/deskmon/releases/latest/download/DeskmonServer.exe) | Windows 10/11 |
+| Deskmon | [Deskmon-release.apk](https://github.com/coffene/deskmon/releases/latest/download/Deskmon-release.apk) | Android 7.0+ |
 
 ## Features
 
