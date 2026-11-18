@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Layout 1 (Original Cards) palette -->
+    <color name="bg_screen">#121212</color>
+    <color name="bg_card">#1E1E1E</color>
+    <color name="stroke_card">#2E2E2E</color>
+    <color name="track_color">#2C2C2C</color>
+
+    <color name="text_primary">#F5F5F5</color>
+    <color name="text_secondary">#B0BEC5</color>
+
+    <color name="accent_primary">#64B5F6</color>
+    <color name="accent_cpu">#4FC3F7</color>
+    <color name="accent_ram">#81C784</color>
+    <color name="accent_storage">#FFB74D</color>
+    <color name="accent_task">#CE93D8</color>
+
+    <!-- Layout 2 (M2 Baseline) palette -->
+    <color name="m2_appbar_surface">#272727</color>
+    <color name="m2_divider">#1FFFFFFF</color>
+    <color name="m2_track">#3DFFFFFF</color>
+    <color name="m2_on_surface_high">#DEFFFFFF</color>
+    <color name="m2_on_surface_medium">#99FFFFFF</color>
+    <color name="m2_primary">#BB86FC</color>
+    <color name="m2_secondary">#03DAC6</color>
+</resources>

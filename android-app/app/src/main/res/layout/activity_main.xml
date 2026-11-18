@@ -1,0 +1,1512 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layoutFlipper"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_screen"
+    android:keepScreenOn="true">
+
+    <!-- ========================================================================= -->
+    <!-- LAYOUT 1 (DEFAULT): GIAO DIỆN ĐẦU TIÊN (3 Ô CARDS + CURRENT TASK CARD)     -->
+    <!-- ========================================================================= -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg_screen"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- Top Control Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/ivLogo1"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_kurisu_badge" />
+
+            <View
+                android:id="@+id/statusDot1"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@android:drawable/presence_offline" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvHostTitle1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/app_name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvStatus1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/status_disconnected"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnFont1"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Font"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_font" />
+
+            <ImageButton
+                android:id="@+id/btnLayout1"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Layout"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_th_large" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggleMode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:checkedButton="@id/btnModeNetwork"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeNetwork"
+                    style="@style/ModeToggleButton"
+                    android:layout_width="40dp"
+                    android:layout_height="34dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp"
+                    android:text=""
+                    app:icon="@drawable/ic_fa_wifi"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/text_primary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeUsb"
+                    style="@style/ModeToggleButton"
+                    android:layout_width="40dp"
+                    android:layout_height="34dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp"
+                    android:text=""
+                    app:icon="@drawable/ic_fa_usb"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/text_primary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeBluetooth"
+                    style="@style/ModeToggleButton"
+                    android:layout_width="40dp"
+                    android:layout_height="34dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp"
+                    android:text=""
+                    app:icon="@drawable/ic_fa_bluetooth"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/text_primary" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <ImageButton
+                android:id="@+id/btnConfig"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Setup"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_cog" />
+
+            <ImageButton
+                android:id="@+id/btnConnect"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Connect"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_plug" />
+
+            <ImageButton
+                android:id="@+id/btnPower1"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Power"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_power_off" />
+        </LinearLayout>
+
+        <!-- 3 Resource Cards Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="10dp"
+            android:layout_weight="1.35"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <!-- CPU Card -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/MetricCard"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="@string/label_cpu_caps"
+                        android:textColor="@color/accent_cpu"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvCpuPercent1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/placeholder_percent"
+                        android:textColor="@color/text_primary"
+                        android:textSize="32sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressCpu1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:max="100"
+                        android:progress="0"
+                        app:indicatorColor="@color/accent_cpu"
+                        app:trackColor="@color/track_color"
+                        app:trackCornerRadius="4dp"
+                        app:trackThickness="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvCpuDetail1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Load"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- RAM Card -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/MetricCard"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginHorizontal="3dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="@string/label_ram_caps"
+                        android:textColor="@color/accent_ram"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvRamPercent1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/placeholder_percent"
+                        android:textColor="@color/text_primary"
+                        android:textSize="32sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressRam1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:max="100"
+                        android:progress="0"
+                        app:indicatorColor="@color/accent_ram"
+                        app:trackColor="@color/track_color"
+                        app:trackCornerRadius="4dp"
+                        app:trackThickness="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvRamDetail1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/placeholder_detail"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Internal Storage Card -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/MetricCard"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="@string/label_storage_caps"
+                        android:textColor="@color/accent_storage"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvStoragePercent1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/placeholder_percent"
+                        android:textColor="@color/text_primary"
+                        android:textSize="32sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressStorage1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:max="100"
+                        android:progress="0"
+                        app:indicatorColor="@color/accent_storage"
+                        app:trackColor="@color/track_color"
+                        app:trackCornerRadius="4dp"
+                        app:trackThickness="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvStorageDetail1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/placeholder_detail"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Bottom Current Task Card -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/MetricCard"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="10dp"
+            android:layout_weight="0.85">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="vertical"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
+                    android:text="@string/label_task_caps"
+                    android:textColor="@color/accent_task"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvCurrentTask1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/placeholder_task"
+                    android:textColor="@color/text_primary"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+
+    <!-- ========================================================================= -->
+    <!-- LAYOUT 2: SPLIT DASHBOARD (COLLAPSIBLE TOP BAR + METRICS + NOW PLAYING)   -->
+    <!-- ========================================================================= -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg_screen"
+        android:orientation="vertical">
+
+        <!-- Collapsible Top Bar (Hidden by default; tap Metrics pane to toggle) -->
+        <LinearLayout
+            android:id="@+id/headerBar3"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="@color/m2_appbar_surface"
+            android:elevation="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:visibility="visible">
+
+            <ImageView
+                android:id="@+id/ivLogo3"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_kurisu_badge" />
+
+            <View
+                android:id="@+id/statusDot3"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@android:drawable/presence_offline" />
+
+            <TextView
+                android:id="@+id/tvHostTitle3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/app_name"
+                android:textSize="16sp"
+                android:textColor="@color/m2_on_surface_high"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStatus3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/status_disconnected"
+                android:textSize="14sp"
+                android:textColor="@color/m2_on_surface_medium" />
+
+            <ImageButton
+                android:id="@+id/btnTogglePlaying3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Toggle Now Playing"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_music" />
+
+            <ImageButton
+                android:id="@+id/btnSwapSide3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Swap side"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_exchange" />
+
+            <ImageButton
+                android:id="@+id/btnFont3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Font"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_font" />
+
+            <ImageButton
+                android:id="@+id/btnLayout3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Layout"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_th_large" />
+
+            <ImageButton
+                android:id="@+id/btnConnectionMenu3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Connection"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_plug" />
+
+            <ImageButton
+                android:id="@+id/btnPower3"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Power"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_power_off" />
+        </LinearLayout>
+
+        <!-- Two-Column Split Body (Swappable Left <-> Right) -->
+        <LinearLayout
+            android:id="@+id/splitContainer3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <!-- PANE A: System Metrics + Current task (tap anywhere here to show/hide top bar) -->
+            <LinearLayout
+                android:id="@+id/paneMetrics3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1.1"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvCurrentTask3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/placeholder_task_line"
+                    android:textSize="16sp"
+                    android:textColor="@color/m2_on_surface_high"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="8dp"
+                    android:background="@color/m2_divider" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <!-- CPU -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/label_cpu"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/m2_on_surface_high" />
+
+                            <TextView
+                                android:id="@+id/tvCpuValue3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/placeholder_percent"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/m2_primary" />
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/progressCpu3"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:max="100"
+                            android:progress="0"
+                            app:indicatorColor="@color/m2_primary"
+                            app:trackColor="@color/m2_track"
+                            app:trackThickness="4dp" />
+                    </LinearLayout>
+
+                    <!-- RAM -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/label_ram"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/m2_on_surface_high" />
+
+                            <TextView
+                                android:id="@+id/tvRamValue3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/placeholder_percent"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/m2_secondary" />
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/progressRam3"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:max="100"
+                            android:progress="0"
+                            app:indicatorColor="@color/m2_secondary"
+                            app:trackColor="@color/m2_track"
+                            app:trackThickness="4dp" />
+                    </LinearLayout>
+
+                    <!-- Storage -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/label_storage"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/m2_on_surface_high" />
+
+                            <TextView
+                                android:id="@+id/tvStorageValue3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/placeholder_percent"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/m2_primary" />
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/progressStorage3"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:max="100"
+                            android:progress="0"
+                            app:indicatorColor="@color/m2_primary"
+                            app:trackColor="@color/m2_track"
+                            app:trackThickness="4dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 1dp Vertical M2 Divider -->
+            <View
+                android:id="@+id/dividerVertical3"
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:layout_marginHorizontal="16dp"
+                android:background="@color/m2_divider" />
+
+            <!-- PANE B: Playing Panel (Tightly packed, original aspect ratio thumbnail, Font Awesome icons) -->
+            <LinearLayout
+                android:id="@+id/panePlaying3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.95"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <!-- 1. Thumbnail preserving exact aspect ratio -->
+                <ImageView
+                    android:id="@+id/ivMediaThumb3"
+                    android:layout_width="match_parent"
+                    android:layout_height="136dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="Media Thumbnail"
+                    android:scaleType="fitCenter"
+                    android:visibility="gone" />
+
+                <!-- 2. Artist / Channel -->
+                <TextView
+                    android:id="@+id/tvMediaArtist3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:ellipsize="end"
+                    android:gravity="center_horizontal"
+                    android:maxLines="1"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textColor="@color/m2_on_surface_medium" />
+
+                <!-- 3. Video / Song Title -->
+                <TextView
+                    android:id="@+id/tvMediaTitle3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:gravity="center_horizontal"
+                    android:maxLines="1"
+                    android:text="@string/media_not_playing"
+                    android:textSize="16sp"
+                    android:textColor="@color/m2_on_surface_high"
+                    android:textStyle="bold" />
+
+                <!-- 4. Progress bar + status (left) and time (right) -->
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/progressMedia3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:max="100"
+                    android:progress="0"
+                    app:indicatorColor="@color/m2_secondary"
+                    app:trackColor="@color/m2_track"
+                    app:trackThickness="4dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvMediaTimeLeft3"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingVertical="4dp"
+                        android:text="@string/media_time_zero"
+                        android:textSize="12sp"
+                        android:textColor="@color/m2_on_surface_high" />
+
+                    <TextView
+                        android:id="@+id/tvMediaTimeRight3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingVertical="4dp"
+                        android:text="@string/media_time_zero"
+                        android:textSize="12sp"
+                        android:textColor="@color/m2_on_surface_medium" />
+                </LinearLayout>
+
+                <!-- 5. Font Awesome Solid Icon Controls -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageButton
+                        android:id="@+id/btnMediaPrev"
+                        android:layout_width="44dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Previous"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_fa_step_backward" />
+
+                    <ImageButton
+                        android:id="@+id/btnMediaPlayPause"
+                        android:layout_width="48dp"
+                        android:layout_height="40dp"
+                        android:layout_marginHorizontal="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Play or Pause"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_fa_play" />
+
+                    <ImageButton
+                        android:id="@+id/btnMediaStop"
+                        android:layout_width="44dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Stop"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_fa_stop" />
+
+                    <ImageButton
+                        android:id="@+id/btnMediaNext"
+                        android:layout_width="44dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Next"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_fa_step_forward" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ========================================================================= -->
+    <!-- LAYOUT 3: FOCUS & MEDIA DASHBOARD (TASK+NOTE + COMPACT TIMER + 3 RINGS)   -->
+    <!-- ========================================================================= -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg_screen"
+        android:orientation="vertical">
+
+        <!-- Collapsible M2 Top Bar -->
+        <LinearLayout
+            android:id="@+id/headerBar4"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="@color/m2_appbar_surface"
+            android:elevation="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:visibility="visible">
+
+            <ImageView
+                android:id="@+id/ivLogo4"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_kurisu_badge" />
+
+            <View
+                android:id="@+id/statusDot4"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@android:drawable/presence_offline" />
+
+            <TextView
+                android:id="@+id/tvHostTitle4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/app_name"
+                android:textSize="16sp"
+                android:textColor="@color/m2_on_surface_high"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStatus4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/status_disconnected"
+                android:textSize="14sp"
+                android:textColor="@color/m2_on_surface_medium" />
+
+            <ImageButton
+                android:id="@+id/btnComponents4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Components"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_components" />
+
+            <ImageButton
+                android:id="@+id/btnResize4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Resize Layout 3"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_sliders" />
+
+            <ImageButton
+                android:id="@+id/btnTogglePlaying4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Toggle Now Playing"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_music" />
+
+            <ImageButton
+                android:id="@+id/btnSwapSide4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Swap side"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_exchange" />
+
+            <ImageButton
+                android:id="@+id/btnFont4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Font"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_font" />
+
+            <ImageButton
+                android:id="@+id/btnLayout4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Layout"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_th_large" />
+
+            <ImageButton
+                android:id="@+id/btnConnectionMenu4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Connection"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_plug" />
+
+            <ImageButton
+                android:id="@+id/btnPower4"
+                android:layout_width="34dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Power"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_power_off" />
+        </LinearLayout>
+
+        <!-- Two-Column Split Body (Swappable Left <-> Right) -->
+        <LinearLayout
+            android:id="@+id/splitContainer4"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <!-- PANE A: Priority Current Task + Note + Compact Timer Progress + 3 Mini Rings -->
+            <LinearLayout
+                android:id="@+id/paneFocus4"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="54"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/taskSection4"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <!-- Task Header + Due Time (Tap header to toggle top bar) -->
+                    <LinearLayout
+                        android:id="@+id/currentTaskHeader4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingBottom="6dp">
+
+                        <TextView
+                            android:id="@+id/tvActiveTaskTitle4"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="No active task"
+                            android:textColor="@color/m2_on_surface_high"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvActiveTaskDue4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text=""
+                            android:textColor="@color/m2_secondary"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/m2_divider" />
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_marginTop="6dp"
+                        android:layout_weight="1"
+                        android:fillViewport="true"
+                        android:scrollbars="vertical">
+
+                        <TextView
+                            android:id="@+id/tvActiveTaskNote4"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="top|start"
+                            android:lineSpacingExtra="4dp"
+                            android:text=""
+                            android:textColor="@color/m2_on_surface_medium"
+                            android:textSize="14sp" />
+                    </ScrollView>
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/dividerTaskTimer4"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@color/m2_divider"
+                    android:visibility="gone" />
+
+                <!-- Compact Timer Progress Strip (Tap to configure / start / pause / reset) -->
+                <LinearLayout
+                    android:id="@+id/timerBar4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvTimerPreset4"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Pomodoro"
+                            android:textColor="@color/m2_on_surface_medium"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvTimerDisplay4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="25:00"
+                            android:textColor="@color/m2_secondary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressTimer4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:max="1000"
+                        android:progress="1000"
+                        app:indicatorColor="@color/m2_secondary"
+                        app:trackColor="@color/m2_track"
+                        app:trackThickness="4dp" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/dividerTimerRings4"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="8dp"
+                    android:background="@color/m2_divider" />
+
+                <!-- Secondary CPU, RAM, Internal Compact Horizontal Rings Strip -->
+                <LinearLayout
+                    android:id="@+id/ringsBar4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <!-- CPU -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/ringCpu4"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:max="100"
+                            android:progress="0"
+                            app:indicatorColor="@color/m2_primary"
+                            app:indicatorSize="36dp"
+                            app:trackColor="@color/m2_track"
+                            app:trackThickness="3dp" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvRingCpuLabel4"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="CPU"
+                                android:textColor="@color/m2_on_surface_medium"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tvRingCpu4"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/m2_on_surface_high"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- RAM -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/ringRam4"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:max="100"
+                            android:progress="0"
+                            app:indicatorColor="@color/m2_secondary"
+                            app:indicatorSize="36dp"
+                            app:trackColor="@color/m2_track"
+                            app:trackThickness="3dp" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvRingRamLabel4"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="RAM"
+                                android:textColor="@color/m2_on_surface_medium"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tvRingRam4"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/m2_on_surface_high"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Internal Storage -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/ringStorage4"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:max="100"
+                            android:progress="0"
+                            app:indicatorColor="@color/m2_primary"
+                            app:indicatorSize="36dp"
+                            app:trackColor="@color/m2_track"
+                            app:trackThickness="3dp" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvRingStorageLabel4"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Internal"
+                                android:textColor="@color/m2_on_surface_medium"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tvRingStorage4"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/m2_on_surface_high"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Draggable Vertical Divider Grip (Drag to resize Left <-> Right width) -->
+            <FrameLayout
+                android:id="@+id/dividerVerticalContainer4"
+                android:layout_width="16dp"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true">
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@color/m2_divider" />
+
+                <View
+                    android:layout_width="3dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="#33FFFFFF" />
+            </FrameLayout>
+
+            <!-- PANE B: Right Stack (Now Playing + OS Notifications) -->
+            <LinearLayout
+                android:id="@+id/paneRight4"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="46"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/playingSection4"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="55"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/ivMediaThumb4"
+                        android:layout_width="match_parent"
+                        android:layout_height="72dp"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="Media Thumbnail"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvMediaArtist4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:gravity="center_horizontal"
+                        android:maxLines="1"
+                        android:text=""
+                        android:textColor="@color/m2_on_surface_medium"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvMediaTitle4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:gravity="center_horizontal"
+                        android:maxLines="1"
+                        android:text="@string/media_not_playing"
+                        android:textColor="@color/m2_on_surface_high"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressMedia4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:max="100"
+                        android:progress="0"
+                        app:indicatorColor="@color/m2_secondary"
+                        app:trackColor="@color/m2_track"
+                        app:trackThickness="4dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvMediaTimeLeft4"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:paddingVertical="2dp"
+                            android:text="@string/media_time_zero"
+                            android:textColor="@color/m2_on_surface_high"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvMediaTimeRight4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="2dp"
+                            android:text="@string/media_time_zero"
+                            android:textColor="@color/m2_on_surface_medium"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/mediaTransportRow4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/btnMediaPrev4"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Previous"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_fa_step_backward" />
+
+                        <ImageButton
+                            android:id="@+id/btnMediaPlayPause4"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Play or Pause"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_fa_play" />
+
+                        <ImageButton
+                            android:id="@+id/btnMediaStop4"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Stop"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_fa_stop" />
+
+                        <ImageButton
+                            android:id="@+id/btnMediaNext4"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Next"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_fa_step_forward" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Draggable Horizontal Divider Grip (Drag to resize Playing <-> Notifications height) -->
+                <FrameLayout
+                    android:id="@+id/dividerRightContainer4"
+                    android:layout_width="match_parent"
+                    android:layout_height="12dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_gravity="center_vertical"
+                        android:background="@color/m2_divider" />
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="3dp"
+                        android:layout_gravity="center"
+                        android:background="#33FFFFFF" />
+                </FrameLayout>
+
+                <!-- OS Notifications Section -->
+                <LinearLayout
+                    android:id="@+id/notifSection4"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="45"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/notifHeader4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingBottom="2dp">
+
+                        <TextView
+                            android:id="@+id/tvNotifHeader4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/notif_header"
+                            android:textColor="@color/m2_on_surface_high"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvNotifCount4"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:text=""
+                            android:textColor="@color/m2_secondary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnClearNotifs4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:paddingHorizontal="6dp"
+                            android:paddingVertical="2dp"
+                            android:text="@string/notif_clear"
+                            android:textColor="@color/m2_on_surface_medium"
+                            android:textSize="11sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvNotifEmpty4"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingVertical="6dp"
+                        android:text="@string/notif_empty"
+                        android:textColor="@color/m2_on_surface_medium"
+                        android:textSize="12sp"
+                        android:visibility="visible" />
+
+                    <ScrollView
+                        android:id="@+id/scrollNotif4"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:scrollbars="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/notifContainer4"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </ScrollView>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+</ViewFlipper>

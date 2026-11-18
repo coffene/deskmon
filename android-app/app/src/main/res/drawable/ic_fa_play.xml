@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Font Awesome 4.7.0: fa-play (f04b) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="14.14dp"
+    android:height="18dp"
+    android:viewportWidth="1408"
+    android:viewportHeight="1792">
+    <group
+        android:scaleY="-1"
+        android:translateY="1536">
+        <path
+            android:fillColor="#DEFFFFFF"
+            android:pathData="M1384 609l-1328 -738q-23 -13 -39.5 -3t-16.5 36v1472q0 26 16.5 36t39.5 -3l1328 -738q23 -13 23 -31t-23 -31z" />
+    </group>
+</vector>

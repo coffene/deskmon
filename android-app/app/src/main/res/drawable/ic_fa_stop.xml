@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Font Awesome 4.7.0: fa-stop (f04d) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="15.43dp"
+    android:height="18dp"
+    android:viewportWidth="1536"
+    android:viewportHeight="1792">
+    <group
+        android:scaleY="-1"
+        android:translateY="1536">
+        <path
+            android:fillColor="#DEFFFFFF"
+            android:pathData="M1536 1344v-1408q0 -26 -19 -45t-45 -19h-1408q-26 0 -45 19t-19 45v1408q0 26 19 45t45 19h1408q26 0 45 -19t19 -45z" />
+    </group>
+</vector>

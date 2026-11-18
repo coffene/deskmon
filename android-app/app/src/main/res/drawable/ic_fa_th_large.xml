@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Font Awesome 4.7.0: fa-th-large (f009) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="14.86dp"
+    android:height="16dp"
+    android:viewportWidth="1664"
+    android:viewportHeight="1792">
+    <group android:scaleY="-1" android:translateY="1536">
+        <path
+            android:fillColor="#DEFFFFFF"
+            android:pathData="M768 512v-384q0 -52 -38 -90t-90 -38h-512q-52 0 -90 38t-38 90v384q0 52 38 90t90 38h512q52 0 90 -38t38 -90zM768 1280v-384q0 -52 -38 -90t-90 -38h-512q-52 0 -90 38t-38 90v384q0 52 38 90t90 38h512q52 0 90 -38t38 -90zM1664 512v-384q0 -52 -38 -90t-90 -38 h-512q-52 0 -90 38t-38 90v384q0 52 38 90t90 38h512q52 0 90 -38t38 -90zM1664 1280v-384q0 -52 -38 -90t-90 -38h-512q-52 0 -90 38t-38 90v384q0 52 38 90t90 38h512q52 0 90 -38t38 -90z" />
+    </group>
+</vector>

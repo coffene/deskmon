@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Deskmon</string>
+    <string name="mode_network">Wi-Fi</string>
+    <string name="mode_usb">USB</string>
+    <string name="mode_bluetooth">BT</string>
+
+    <string name="btn_connect">Connect</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_config">Setup</string>
+    <string name="btn_layout">UI</string>
+    <string name="btn_connection">Connection</string>
+    <string name="btn_swap_side">Swap side</string>
+
+    <string name="label_cpu_caps">CPU USAGE</string>
+    <string name="label_ram_caps">RAM USAGE</string>
+    <string name="label_storage_caps">INTERNAL STORAGE</string>
+    <string name="label_task_caps">CURRENT TASK</string>
+
+    <string name="label_cpu">CPU Usage</string>
+    <string name="label_ram">RAM Usage</string>
+    <string name="label_storage">Internal Storage</string>
+
+    <string name="placeholder_percent">--%</string>
+    <string name="percent_fmt">%1$d%%</string>
+    <string name="placeholder_detail">-- / -- GB</string>
+    <string name="ram_value_fmt">%1$d%%   %2$.1f / %3$.1f GB</string>
+    <string name="storage_value_fmt">%1$d%%   %2$.0f / %3$.0f GB</string>
+    <string name="placeholder_task">Waiting for task from PC server</string>
+    <string name="current_task_fmt">Current task: %1$s</string>
+    <string name="placeholder_task_line">Current task: No active task</string>
+
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_connected">Connected</string>
+
+    <string name="media_not_playing">Not playing</string>
+    <string name="media_time_zero">00:00</string>
+
+    <string name="power_dialog_title">Power</string>
+    <string name="power_close_and_lock">Close app &amp; lock screen</string>
+    <string name="power_lock_only">Lock screen</string>
+    <string name="power_close_only">Close app</string>
+    <string name="device_admin_explanation">Allow PC Monitor to lock the device screen without pressing the physical power button.</string>
+    <string name="device_admin_denied">Screen lock permission was not enabled</string>
+
+    <string name="notif_header">Notifications</string>
+    <string name="notif_clear">Clear</string>
+    <string name="notif_empty">No notifications</string>
+    <string name="notif_access_denied">Enable notification access on Windows</string>
+    <string name="l3_customize_title">Layout 3 options</string>
+</resources>

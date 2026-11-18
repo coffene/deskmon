@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Font Awesome 4.7.0: fa-bluetooth-b (f294) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="9.14dp"
+    android:height="16dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1792">
+    <group android:scaleY="-1" android:translateY="1536">
+        <path
+            android:fillColor="#DEFFFFFF"
+            android:pathData="M596 113l173 172l-173 172v-344zM596 823l173 172l-173 172v-344zM628 640l356 -356l-539 -540v711l-297 -296l-108 108l372 373l-372 373l108 108l297 -296v711l539 -540z" />
+    </group>
+</vector>
