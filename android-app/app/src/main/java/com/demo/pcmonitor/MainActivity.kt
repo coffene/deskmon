@@ -2267,6 +2267,18 @@ class MainActivity : AppCompatActivity() {
         btScroll.addView(btDeviceGroup)
         container.addView(btScroll)
 
+        val verName = runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }.getOrDefault("26.1119")
+        val tvVersion = TextView(this).apply {
+            text = "Deskmon $verName"
+            textSize = 11f
+            setTextColor(ContextCompat.getColor(context, R.color.m2_on_surface_medium))
+            gravity = Gravity.END
+            setPadding(0, (6 * density).toInt(), 0, 0)
+        }
+        container.addView(tvVersion)
+
         var activeDialog: AlertDialog? = null
 
         fun populateInlineBluetoothDevices() {

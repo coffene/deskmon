@@ -656,7 +656,7 @@ namespace PCMonitorServer
 
             Title = "Deskmon server";
             Width = 780;
-            Height = 625;
+            Height = 640;
             SizeToContent = SizeToContent.Manual;
             ResizeMode = ResizeMode.CanMinimize;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -1018,7 +1018,23 @@ namespace PCMonitorServer
             rootGrid.Children.Add(taskCard);
 
             UpdateOptionHighlights();
-            Content = rootGrid;
+
+            var outerGrid = new Grid();
+            outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            outerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(rootGrid, 0);
+            outerGrid.Children.Add(rootGrid);
+
+            var tvVersion = new TextBlock();
+            tvVersion.Text = "26.1119";
+            tvVersion.FontSize = 11;
+            tvVersion.Foreground = theme.TextSecondary;
+            tvVersion.HorizontalAlignment = HorizontalAlignment.Right;
+            tvVersion.Margin = new Thickness(14, 0, 14, 8);
+            Grid.SetRow(tvVersion, 1);
+            outerGrid.Children.Add(tvVersion);
+
+            Content = outerGrid;
             Loaded += delegate { tbTask.Focus(); };
         }
 
