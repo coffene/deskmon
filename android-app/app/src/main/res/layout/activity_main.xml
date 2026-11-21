@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/layoutFlipper"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_screen"
     android:keepScreenOn="true">
+
+    <ImageView
+        android:id="@+id/ivAppBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.32"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <ViewFlipper
+        android:id="@+id/layoutFlipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent">
 
     <!-- ========================================================================= -->
     <!-- LAYOUT 1 (DEFAULT): GIAO DIỆN ĐẦU TIÊN (3 Ô CARDS + CURRENT TASK CARD)     -->
@@ -13,7 +27,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/bg_screen"
+        android:background="@android:color/transparent"
         android:orientation="vertical"
         android:padding="12dp">
 
@@ -67,92 +81,42 @@
                     android:textSize="11sp" />
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/btnFont1"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Font"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_font" />
-
-            <ImageButton
-                android:id="@+id/btnLayout1"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginEnd="4dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Layout"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_th_large" />
-
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/toggleMode"
+            <TextClock
+                android:id="@+id/tcClock1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:checkedButton="@id/btnModeNetwork"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModeNetwork"
-                    style="@style/ModeToggleButton"
-                    android:layout_width="40dp"
-                    android:layout_height="34dp"
-                    android:paddingLeft="0dp"
-                    android:paddingRight="0dp"
-                    android:text=""
-                    app:icon="@drawable/ic_fa_wifi"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp"
-                    app:iconSize="16dp"
-                    app:iconTint="@color/text_primary" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModeUsb"
-                    style="@style/ModeToggleButton"
-                    android:layout_width="40dp"
-                    android:layout_height="34dp"
-                    android:paddingLeft="0dp"
-                    android:paddingRight="0dp"
-                    android:text=""
-                    app:icon="@drawable/ic_fa_usb"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp"
-                    app:iconSize="16dp"
-                    app:iconTint="@color/text_primary" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnModeBluetooth"
-                    style="@style/ModeToggleButton"
-                    android:layout_width="40dp"
-                    android:layout_height="34dp"
-                    android:paddingLeft="0dp"
-                    android:paddingRight="0dp"
-                    android:text=""
-                    app:icon="@drawable/ic_fa_bluetooth"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp"
-                    app:iconSize="16dp"
-                    app:iconTint="@color/text_primary" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
+                android:layout_marginEnd="10dp"
+                android:format12Hour="EEE, dd/MM - hh:mm a"
+                android:format24Hour="EEE, dd/MM - HH:mm"
+                android:textColor="@color/m2_on_surface_medium"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
             <ImageButton
-                android:id="@+id/btnConfig"
+                android:id="@+id/btnPushImg1"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
-                android:layout_marginStart="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Setup"
+                android:contentDescription="Last image"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_cog" />
+                android:src="@drawable/ic_fa_image" />
 
             <ImageButton
-                android:id="@+id/btnConnect"
+                android:id="@+id/btnDisplay1"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Connect"
+                android:contentDescription="Display"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_sliders" />
+
+            <ImageButton
+                android:id="@+id/btnConnectionMenu1"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Connection"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_fa_plug" />
 
@@ -393,7 +357,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/bg_screen"
+        android:background="@android:color/transparent"
         android:orientation="vertical">
 
         <!-- Collapsible Top Bar (Hidden by default; tap Metrics pane to toggle) -->
@@ -445,40 +409,31 @@
                 android:textColor="@color/m2_on_surface_medium" />
 
             <ImageButton
-                android:id="@+id/btnTogglePlaying3"
+                android:id="@+id/btnPushImg3"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Toggle Now Playing"
+                android:contentDescription="Last image"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_music" />
+                android:src="@drawable/ic_fa_image" />
 
             <ImageButton
-                android:id="@+id/btnSwapSide3"
+                android:id="@+id/btnComponents3"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Swap side"
+                android:contentDescription="Panels"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_exchange" />
+                android:src="@drawable/ic_fa_components" />
 
             <ImageButton
-                android:id="@+id/btnFont3"
+                android:id="@+id/btnDisplay3"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Font"
+                android:contentDescription="Display"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_font" />
-
-            <ImageButton
-                android:id="@+id/btnLayout3"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Layout"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_th_large" />
+                android:src="@drawable/ic_fa_sliders" />
 
             <ImageButton
                 android:id="@+id/btnConnectionMenu3"
@@ -519,16 +474,36 @@
                 android:focusable="true"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tvCurrentTask3"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:text="@string/placeholder_task_line"
-                    android:textSize="16sp"
-                    android:textColor="@color/m2_on_surface_high"
-                    android:textStyle="bold" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvCurrentTask3"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/placeholder_task_line"
+                        android:textSize="16sp"
+                        android:textColor="@color/m2_on_surface_high"
+                        android:textStyle="bold" />
+
+                    <TextClock
+                        android:id="@+id/tcClock3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:format12Hour="EEE, dd/MM - hh:mm a"
+                        android:format24Hour="EEE, dd/MM - HH:mm"
+                        android:textColor="@color/m2_on_surface_medium"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
@@ -831,7 +806,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/bg_screen"
+        android:background="@android:color/transparent"
         android:orientation="vertical">
 
         <!-- Collapsible M2 Top Bar -->
@@ -883,62 +858,35 @@
                 android:textColor="@color/m2_on_surface_medium" />
 
             <ImageButton
-                android:id="@+id/btnComponents4"
-                android:layout_width="34dp"
+                android:id="@+id/btnPushImg4"
+                android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Components"
+                android:contentDescription="Last image"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_fa_image" />
+
+            <ImageButton
+                android:id="@+id/btnComponents4"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Panels"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_fa_components" />
 
             <ImageButton
-                android:id="@+id/btnResize4"
-                android:layout_width="34dp"
+                android:id="@+id/btnDisplay4"
+                android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Resize Layout 3"
+                android:contentDescription="Display"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_fa_sliders" />
 
             <ImageButton
-                android:id="@+id/btnTogglePlaying4"
-                android:layout_width="34dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Toggle Now Playing"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_music" />
-
-            <ImageButton
-                android:id="@+id/btnSwapSide4"
-                android:layout_width="34dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Swap side"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_exchange" />
-
-            <ImageButton
-                android:id="@+id/btnFont4"
-                android:layout_width="34dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Font"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_font" />
-
-            <ImageButton
-                android:id="@+id/btnLayout4"
-                android:layout_width="34dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Layout"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_fa_th_large" />
-
-            <ImageButton
                 android:id="@+id/btnConnectionMenu4"
-                android:layout_width="34dp"
+                android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Connection"
@@ -947,7 +895,7 @@
 
             <ImageButton
                 android:id="@+id/btnPower4"
-                android:layout_width="34dp"
+                android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Power"
@@ -972,6 +920,21 @@
                 android:layout_height="match_parent"
                 android:layout_weight="54"
                 android:orientation="vertical">
+
+                <TextClock
+                    android:id="@+id/tcClock4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:format12Hour="EEE, dd/MM - hh:mm a"
+                    android:format24Hour="EEE, dd/MM - HH:mm"
+                    android:paddingBottom="4dp"
+                    android:textColor="@color/m2_on_surface_medium"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
 
                 <LinearLayout
                     android:id="@+id/taskSection4"
@@ -1509,4 +1472,23 @@
         </LinearLayout>
     </LinearLayout>
 
-</ViewFlipper>
+    </ViewFlipper>
+
+    <FrameLayout
+        android:id="@+id/overlayPushImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#F2000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivPushImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/app_name"
+            android:scaleType="fitCenter" />
+    </FrameLayout>
+
+</FrameLayout>

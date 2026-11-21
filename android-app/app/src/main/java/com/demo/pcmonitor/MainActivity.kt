@@ -65,6 +65,11 @@ class MainActivity : AppCompatActivity() {
     private var fontChoice = 0 // 0=Fira Sans, 1=IBM Plex Sans, 2=Barlow, 3=Roboto
     private var lastThumbSeq = -1
     private var cachedThumbBitmap: Bitmap? = null
+    private var lastPushImgSeq = -1
+    private var cachedPushBitmap: Bitmap? = null
+    private var lastBgSeq = -1
+    private var cachedBgRawBitmap: Bitmap? = null
+    private var cachedBgBitmap: Bitmap? = null
     private val cachedTypefaces = arrayOfNulls<Pair<Typeface?, Typeface?>>(4)
     private var lastSnapshot: ResourceSnapshot? = null
     private var lastAppliedCfgSeq = 0
@@ -82,6 +87,11 @@ class MainActivity : AppCompatActivity() {
     private var l3MetricScale = 100
     private var showTopBar = true
     private var showLogo = true
+    private var isFullscreen = false
+    private var bgEnabled = true
+    private var bgMode = 0 // 0 = Custom image, 1 = Sync with playing
+    private var bgOpacity = 32
+    private var bgBlur = 6
     private var lastRenderedNotifSeq = -1
     private var cachedNotifications: List<OsNotification> = emptyList()
     private var cachedNotifAccess = true
@@ -106,7 +116,20 @@ class MainActivity : AppCompatActivity() {
             if (dpm != null && dpm.isAdminActive(admin)) {
                 lockAndMaybeClose(dpm, closeApp = pendingLockCloseApp)
             } else {
-                Toast.makeText(this, getString(R.string.device_admin_denied), Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, getString(R.string.device_admin_denied), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    private val bgImagePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                runCatching {
+                    contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }.getOrNull()?.let { bytes ->
+                    if (bytes.isNotEmpty() && bytes.size <= 15_000_000) {
+                        showBackgroundPreviewDialog(bytes)
+                    }
+                }
             }
         }
 
@@ -171,6 +194,37 @@ class MainActivity : AppCompatActivity() {
         autoDetectAndConnectOnStartup()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && isFullscreen) {
+            applyFullscreenMode()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applyFullscreenMode() {
+        val clockVis = if (isFullscreen) View.VISIBLE else View.GONE
+        if (::binding.isInitialized) {
+            binding.tcClock1.visibility = clockVis
+            binding.tcClock3.visibility = clockVis
+            binding.tcClock4.visibility = clockVis
+        }
+        if (isFullscreen) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        }
+    }
+
     override fun onDestroy() {
         cleanupAppResources()
         super.onDestroy()
@@ -183,6 +237,8 @@ class MainActivity : AppCompatActivity() {
         countDownTimer?.cancel()
         stopAlarmRingtone()
         clearCachedThumb()
+        clearPushImageOverlay()
+        clearBackgroundImage(deleteFile = false)
         lastSnapshot = null
         cachedNotifications = emptyList()
         if (::client.isInitialized) {
@@ -199,20 +255,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearCachedThumb() {
+        val hadThumb = cachedThumbBitmap != null
         if (::binding.isInitialized) {
             binding.ivMediaThumb3.setImageDrawable(null)
             binding.ivMediaThumb4.setImageDrawable(null)
+            if (cachedBgBitmap != null && cachedBgBitmap === cachedThumbBitmap) {
+                binding.ivAppBackground.setImageDrawable(null)
+                cachedBgBitmap = null
+            }
         }
         cachedThumbBitmap?.recycle()
         cachedThumbBitmap = null
+        if (hadThumb && bgEnabled && bgMode == 1 && ::binding.isInitialized && !isShuttingDown) {
+            refreshDisplayedBackgroundBlur()
+        }
     }
 
-    private fun decodeSampledThumb(bytes: ByteArray): Bitmap? {
+    private fun decodeSampledBitmap(bytes: ByteArray, maxDim: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
-        while (bounds.outWidth / (sample * 2) >= 192 || bounds.outHeight / (sample * 2) >= 192) {
+        while (bounds.outWidth / (sample * 2) >= maxDim || bounds.outHeight / (sample * 2) >= maxDim) {
             sample *= 2
         }
         val opts = BitmapFactory.Options().apply {
@@ -220,6 +284,185 @@ class MainActivity : AppCompatActivity() {
             inPreferredConfig = Bitmap.Config.RGB_565
         }
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+    }
+
+    private fun decodeSampledThumb(bytes: ByteArray): Bitmap? = decodeSampledBitmap(bytes, 192)
+
+    private fun clearPushImageOverlay() {
+        if (::binding.isInitialized) {
+            binding.ivPushImage.setImageDrawable(null)
+            binding.overlayPushImage.visibility = View.GONE
+        }
+        cachedPushBitmap?.recycle()
+        cachedPushBitmap = null
+    }
+
+    private fun showLastPushedImage() {
+        val f = java.io.File(filesDir, "last_push.jpg")
+        if (!f.exists() || f.length() <= 0) {
+            Toast.makeText(applicationContext, "No pushed image yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val bmp = runCatching { decodeSampledBitmap(f.readBytes(), 960) }.getOrNull()
+        if (bmp == null) {
+            Toast.makeText(applicationContext, "Failed to load image", Toast.LENGTH_SHORT).show()
+            return
+        }
+        clearPushImageOverlay()
+        cachedPushBitmap = bmp
+        binding.ivPushImage.setImageBitmap(bmp)
+        binding.overlayPushImage.visibility = View.VISIBLE
+    }
+
+    private fun clearBackgroundImage(deleteFile: Boolean) {
+        if (::binding.isInitialized) {
+            binding.ivAppBackground.setImageDrawable(null)
+            binding.ivAppBackground.visibility = View.GONE
+        }
+        if (cachedBgBitmap != null && cachedBgBitmap !== cachedBgRawBitmap) {
+            cachedBgBitmap?.recycle()
+        }
+        cachedBgBitmap = null
+        cachedBgRawBitmap?.recycle()
+        cachedBgRawBitmap = null
+        if (deleteFile) {
+            runCatching { java.io.File(filesDir, "app_bg.jpg").delete() }
+        }
+    }
+
+    private fun createBlurredBitmap(src: Bitmap, blurLevel: Int): Bitmap {
+        val lvl = blurLevel.coerceIn(0, 25)
+        if (lvl <= 0) return src
+        val downscale = if (lvl >= 12) 4 else if (lvl >= 5) 3 else 2
+        val w = (src.width / downscale).coerceAtLeast(16)
+        val h = (src.height / downscale).coerceAtLeast(16)
+        val small = Bitmap.createScaledBitmap(src, w, h, true)
+        val radius = (lvl / 2).coerceIn(1, 12)
+        val pixels = IntArray(w * h)
+        val tmp = IntArray(w * h)
+        small.getPixels(pixels, 0, w, 0, 0, w, h)
+        if (small !== src) small.recycle()
+
+        val div = 2 * radius + 1
+        for (pass in 0 until 2) {
+            // Horizontal pass
+            for (y in 0 until h) {
+                val row = y * w
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                for (i in -radius..radius) {
+                    val p = pixels[row + i.coerceIn(0, w - 1)]
+                    rSum += (p shr 16) and 0xFF
+                    gSum += (p shr 8) and 0xFF
+                    bSum += p and 0xFF
+                }
+                for (x in 0 until w) {
+                    tmp[row + x] = (0xFF shl 24) or ((rSum / div) shl 16) or ((gSum / div) shl 8) or (bSum / div)
+                    val pOut = pixels[row + (x - radius).coerceAtLeast(0)]
+                    val pIn = pixels[row + (x + radius + 1).coerceAtMost(w - 1)]
+                    rSum += ((pIn shr 16) and 0xFF) - ((pOut shr 16) and 0xFF)
+                    gSum += ((pIn shr 8) and 0xFF) - ((pOut shr 8) and 0xFF)
+                    bSum += (pIn and 0xFF) - (pOut and 0xFF)
+                }
+            }
+            // Vertical pass
+            for (x in 0 until w) {
+                var rSum = 0
+                var gSum = 0
+                var bSum = 0
+                for (i in -radius..radius) {
+                    val p = tmp[i.coerceIn(0, h - 1) * w + x]
+                    rSum += (p shr 16) and 0xFF
+                    gSum += (p shr 8) and 0xFF
+                    bSum += p and 0xFF
+                }
+                for (y in 0 until h) {
+                    pixels[y * w + x] = (0xFF shl 24) or ((rSum / div) shl 16) or ((gSum / div) shl 8) or (bSum / div)
+                    val pOut = tmp[(y - radius).coerceAtLeast(0) * w + x]
+                    val pIn = tmp[(y + radius + 1).coerceAtMost(h - 1) * w + x]
+                    rSum += ((pIn shr 16) and 0xFF) - ((pOut shr 16) and 0xFF)
+                    gSum += ((pIn shr 8) and 0xFF) - ((pOut shr 8) and 0xFF)
+                    bSum += (pIn and 0xFF) - (pOut and 0xFF)
+                }
+            }
+        }
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
+        out.setPixels(pixels, 0, w, 0, 0, w, h)
+        return out
+    }
+
+    private fun refreshDisplayedBackgroundBlur() {
+        val src = if (!bgEnabled) {
+            null
+        } else if (bgMode == 1) {
+            cachedThumbBitmap
+        } else {
+            cachedBgRawBitmap
+        }
+        if (src == null) {
+            if (::binding.isInitialized) {
+                binding.ivAppBackground.setImageDrawable(null)
+                binding.ivAppBackground.visibility = View.GONE
+            }
+            if (cachedBgBitmap != null && cachedBgBitmap !== cachedBgRawBitmap && cachedBgBitmap !== cachedThumbBitmap) {
+                cachedBgBitmap?.recycle()
+            }
+            cachedBgBitmap = null
+            return
+        }
+        val prev = cachedBgBitmap
+        val blurred = createBlurredBitmap(src, bgBlur)
+        cachedBgBitmap = blurred
+        binding.ivAppBackground.setImageBitmap(blurred)
+        binding.ivAppBackground.alpha = bgOpacity.coerceIn(5, 100) / 100f
+        binding.ivAppBackground.visibility = View.VISIBLE
+        if (prev != null && prev !== cachedBgRawBitmap && prev !== cachedThumbBitmap && prev !== blurred) {
+            prev.recycle()
+        }
+    }
+
+    private fun applyBackgroundBytes(bytes: ByteArray, saveToDisk: Boolean) {
+        val raw = decodeSampledBitmap(bytes, 800) ?: return
+        clearBackgroundImage(deleteFile = false)
+        cachedBgRawBitmap = raw
+        refreshDisplayedBackgroundBlur()
+        if (saveToDisk) {
+            runCatching { java.io.File(filesDir, "app_bg.jpg").writeBytes(bytes) }
+        }
+    }
+
+    private fun loadSavedBackground() {
+        val f = java.io.File(filesDir, "app_bg.jpg")
+        if (f.exists() && f.length() in 1..2000000) {
+            runCatching { applyBackgroundBytes(f.readBytes(), saveToDisk = false) }
+        }
+    }
+
+    private fun showSystemDetailsDialog() {
+        val s = lastSnapshot
+        val msg = if (s == null) {
+            "Not connected to server."
+        } else {
+            val cpuInt = s.cpuPercent.roundToInt().coerceIn(0, 100)
+            val ramInt = s.ramPercent.roundToInt().coerceIn(0, 100)
+            val diskInt = s.diskPercent.roundToInt().coerceIn(0, 100)
+            val ramFree = (s.ramTotalGb - s.ramUsedGb).coerceAtLeast(0f)
+            val diskFree = (s.diskTotalGb - s.diskUsedGb).coerceAtLeast(0f)
+            val cpuState = if (cpuInt >= 85) "High load" else "Normal"
+            buildString {
+                append("Host: ${s.hostname}\n\n")
+                append("CPU: $cpuInt% ($cpuState)\n")
+                append(String.format("RAM: %d%%   %.1f / %.1f GB (%.1f GB free)\n", ramInt, s.ramUsedGb, s.ramTotalGb, ramFree))
+                append(String.format("Storage: %d%%   %.0f / %.0f GB (%.0f GB free)", diskInt, s.diskUsedGb, s.diskTotalGb, diskFree))
+            }
+        }
+        showStyledDialog(
+            MaterialAlertDialogBuilder(this)
+                .setTitle("System details")
+                .setMessage(msg)
+                .setPositiveButton("Close", null)
+        )
     }
 
     private fun setHeaderBarAnimated(bar: View, visible: Boolean) {
@@ -286,53 +529,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupModeToggle() {
-        binding.toggleMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            val newMode = when (checkedId) {
-                R.id.btnModeUsb -> ConnectionMode.USB
-                R.id.btnModeBluetooth -> ConnectionMode.BLUETOOTH
-                else -> ConnectionMode.NETWORK
-            }
-            if (newMode != currentMode) {
-                currentMode = newMode
-                prefs.edit().putString("mode", currentMode.name).apply()
-                if (isConnected) {
-                    client.disconnect()
-                }
-            }
-        }
+        // Unified connection dialog is used across all layouts
     }
 
     private fun setupButtons() {
-        val showLayoutPicker = View.OnClickListener { showLayoutSelectorDialog() }
-        binding.btnLayout1.setOnClickListener(showLayoutPicker)
-        binding.btnLayout3.setOnClickListener(showLayoutPicker)
-        binding.btnLayout4.setOnClickListener(showLayoutPicker)
+        val openLastImg = View.OnClickListener { showLastPushedImage() }
+        binding.btnPushImg1.setOnClickListener(openLastImg)
+        binding.btnPushImg3.setOnClickListener(openLastImg)
+        binding.btnPushImg4.setOnClickListener(openLastImg)
 
-        val showFontPicker = View.OnClickListener { showFontSelectorDialog() }
-        binding.btnFont1.setOnClickListener(showFontPicker)
-        binding.btnFont3.setOnClickListener(showFontPicker)
-        binding.btnFont4.setOnClickListener(showFontPicker)
+        val openDisplayDialog = View.OnClickListener { showDisplayAndBackgroundDialog() }
+        binding.btnDisplay1.setOnClickListener(openDisplayDialog)
+        binding.btnDisplay3.setOnClickListener(openDisplayDialog)
+        binding.btnDisplay4.setOnClickListener(openDisplayDialog)
 
-        // Layout 1 direct controls
-        binding.btnConfig.setOnClickListener {
-            when (currentMode) {
-                ConnectionMode.NETWORK -> showNetworkConfigDialog()
-                ConnectionMode.USB -> showUsbHelpDialog()
-                ConnectionMode.BLUETOOTH -> showBluetoothPickerDialog()
-            }
-        }
+        val openPanelsDialog = View.OnClickListener { showLayout3ComponentsDialog() }
+        binding.btnComponents3.setOnClickListener(openPanelsDialog)
+        binding.btnComponents4.setOnClickListener(openPanelsDialog)
 
-        binding.btnConnect.setOnClickListener {
-            if (isConnected) {
-                client.disconnect()
-            } else {
-                startConnection()
-            }
-        }
-
-        // Layout 2 & 3 unified connection dialog
         val openConnDialog = View.OnClickListener { showConnectionDialog() }
+        binding.btnConnectionMenu1.setOnClickListener(openConnDialog)
         binding.btnConnectionMenu3.setOnClickListener(openConnDialog)
         binding.btnConnectionMenu4.setOnClickListener(openConnDialog)
 
@@ -376,40 +592,14 @@ class MainActivity : AppCompatActivity() {
         }
         binding.paneMetrics3.setOnClickListener(toggleTopBar)
         binding.currentTaskHeader4.setOnClickListener(toggleTopBar)
-        binding.ringsBar4.setOnClickListener(toggleTopBar)
+        binding.tcClock4.setOnClickListener(toggleTopBar)
         binding.tvNotifHeader4.setOnClickListener(toggleTopBar)
+        binding.ringsBar4.setOnClickListener { showSystemDetailsDialog() }
+        binding.overlayPushImage.setOnClickListener { clearPushImageOverlay() }
 
-        binding.btnComponents4.setOnClickListener { showLayout3ComponentsDialog() }
-        binding.btnResize4.setOnClickListener { showLayout3ResizeDialog() }
         binding.btnClearNotifs4.setOnClickListener { client.sendClearNotifications() }
 
         setupLayout3DragHandles()
-
-        // Toggle Now Playing visibility (shared between Layout 2 & 3)
-        val togglePlaying = View.OnClickListener {
-            if (binding.layoutFlipper.displayedChild == 2 && showPlayingPanel && visibleL3Count() <= 1) {
-                Toast.makeText(this, "Keep at least 1 component visible", Toast.LENGTH_SHORT).show()
-                return@OnClickListener
-            }
-            showPlayingPanel = !showPlayingPanel
-            prefs.edit().putBoolean("show_playing", showPlayingPanel).apply()
-            applyPlayingVisibility()
-            syncOptionsToServer()
-        }
-        binding.btnTogglePlaying3.setOnClickListener(togglePlaying)
-        binding.btnTogglePlaying4.setOnClickListener(togglePlaying)
-
-        // Swap Playing side Left <-> Right (shared between Layout 2 & 3)
-        val swapSide = View.OnClickListener {
-            playingOnLeft = !playingOnLeft
-            prefs.edit().putBoolean("playing_on_left", playingOnLeft).apply()
-            applyPlayingSideOrder()
-            animateSoftFade(binding.splitContainer3)
-            animateSoftFade(binding.splitContainer4)
-            syncOptionsToServer()
-        }
-        binding.btnSwapSide3.setOnClickListener(swapSide)
-        binding.btnSwapSide4.setOnClickListener(swapSide)
 
         // Cycle Now Playing time mode on tap (shared between Layout 2 & 3)
         val cycleTimeMode = View.OnClickListener {
@@ -523,7 +713,7 @@ class MainActivity : AppCompatActivity() {
 
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         if (dpm == null) {
-            Toast.makeText(this, "Device Policy service unavailable", Toast.LENGTH_SHORT).show()
+            Toast.makeText(applicationContext, "Device Policy service unavailable", Toast.LENGTH_SHORT).show()
             return
         }
         val admin = ComponentName(this, MonitorDeviceAdminReceiver::class.java)
@@ -882,19 +1072,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyPlayingVisibility() {
         val vis = if (showPlayingPanel) View.VISIBLE else View.GONE
-        val iconColor = ContextCompat.getColor(
-            this,
-            if (showPlayingPanel) R.color.m2_secondary else R.color.m2_on_surface_medium
-        )
 
         // Layout 2
         binding.panePlaying3.visibility = vis
         binding.dividerVertical3.visibility = vis
-        binding.btnSwapSide3.visibility = vis
-        binding.btnTogglePlaying3.setColorFilter(iconColor)
 
         // Layout 3 (delegated to full Layout 3 component/size controller)
-        binding.btnTogglePlaying4.setColorFilter(iconColor)
         applyLayout3Config()
     }
 
@@ -948,7 +1131,6 @@ class MainActivity : AppCompatActivity() {
             if (showPlayingPanel && l3ShowNotif) View.VISIBLE else View.GONE
         binding.dividerVerticalContainer4.visibility =
             if (hasBothSides) View.VISIBLE else View.GONE
-        binding.btnSwapSide4.visibility = if (hasBothSides) View.VISIBLE else View.GONE
 
         // Column horizontal split weights
         val leftWeight = if (hasBothSides) l3SplitPct.toFloat() else 1f
@@ -1173,10 +1355,18 @@ class MainActivity : AppCompatActivity() {
         l3MetricScale = prefs.getInt("l3_metric_scale", 100).coerceIn(80, 125)
         showTopBar = prefs.getBoolean("show_top_bar", true)
         showLogo = prefs.getBoolean("show_logo", true)
+        isFullscreen = prefs.getBoolean("fullscreen", false)
+        bgEnabled = prefs.getBoolean("bg_enabled", true)
+        bgMode = prefs.getInt("bg_mode", 0).coerceIn(0, 1)
+        bgOpacity = prefs.getInt("bg_opacity", 32).coerceIn(5, 100)
+        bgBlur = prefs.getInt("bg_blur", 6).coerceIn(0, 25)
+        binding.ivAppBackground.alpha = bgOpacity / 100f
+        applyFullscreenMode()
 
         applyPlayingVisibility()
         applyLogoVisibility()
         applyTopBarVisibility(animated = false)
+        loadSavedBackground()
 
         playingOnLeft = prefs.getBoolean("playing_on_left", false)
         applyPlayingSideOrder()
@@ -1195,12 +1385,382 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun syncModeToggleUi() {
-        val btnId = when (currentMode) {
-            ConnectionMode.USB -> R.id.btnModeUsb
-            ConnectionMode.BLUETOOTH -> R.id.btnModeBluetooth
-            ConnectionMode.NETWORK -> R.id.btnModeNetwork
+        // Unified connection dialog is used across all layouts
+    }
+
+    private fun showDisplayAndBackgroundDialog() {
+        val density = resources.displayMetrics.density
+        val padH = (18 * density).toInt()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padH, (6 * density).toInt(), padH, (2 * density).toInt())
         }
-        binding.toggleMode.check(btnId)
+
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        val colLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val colFont = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = (12 * density).toInt()
+            }
+        }
+        topRow.addView(colLayout)
+        topRow.addView(colFont)
+        root.addView(topRow)
+
+        val highCol = ContextCompat.getColor(this, R.color.m2_on_surface_high)
+        val medCol = ContextCompat.getColor(this, R.color.m2_on_surface_medium)
+        val accentCol = ContextCompat.getColor(this, R.color.m2_secondary)
+        val tintList = android.content.res.ColorStateList.valueOf(accentCol)
+
+        colLayout.addView(TextView(this).apply {
+            text = "Layout"
+            textSize = 12f
+            setTextColor(medCol)
+        })
+        val rgLayout = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL }
+        val curLayout = binding.layoutFlipper.displayedChild.coerceIn(0, 2)
+        listOf("Layout 1", "Layout 2", "Layout 3").forEachIndexed { idx, label ->
+            val rb = RadioButton(this).apply {
+                id = View.generateViewId()
+                text = label
+                textSize = 13f
+                setTextColor(highCol)
+                buttonTintList = tintList
+                setOnClickListener {
+                    binding.layoutFlipper.displayedChild = idx
+                    prefs.edit().putInt("ui_layout", idx).apply()
+                    lastSnapshot?.let { renderSnapshot(it) }
+                    syncOptionsToServer()
+                }
+            }
+            rgLayout.addView(rb)
+            if (idx == curLayout) rgLayout.check(rb.id)
+        }
+        colLayout.addView(rgLayout)
+
+        colFont.addView(TextView(this).apply {
+            text = "Font"
+            textSize = 12f
+            setTextColor(medCol)
+        })
+        val rgFont = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL }
+        listOf("Fira Sans", "IBM Plex", "Barlow", "Roboto").forEachIndexed { idx, label ->
+            val rb = RadioButton(this).apply {
+                id = View.generateViewId()
+                text = label
+                textSize = 13f
+                setTextColor(highCol)
+                buttonTintList = tintList
+                setOnClickListener {
+                    fontChoice = idx
+                    prefs.edit().putInt("font_choice", idx).apply()
+                    applySelectedFont()
+                    syncOptionsToServer()
+                }
+            }
+            rgFont.addView(rb)
+            if (idx == fontChoice) rgFont.check(rb.id)
+        }
+        colFont.addView(rgFont)
+
+        // Background opacity slider
+        val opRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (6 * density).toInt(), 0, 0)
+        }
+        val tvOpLabel = TextView(this).apply {
+            text = "Background opacity"
+            textSize = 12f
+            setTextColor(medCol)
+        }
+        val tvOpVal = TextView(this).apply {
+            text = "$bgOpacity%"
+            textSize = 12.5f
+            setTextColor(accentCol)
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding((10 * density).toInt(), 0, (6 * density).toInt(), 0)
+        }
+        val sbOpacity = SeekBar(this).apply {
+            max = 95
+            progress = (bgOpacity - 5).coerceIn(0, 95)
+            progressTintList = tintList
+            thumbTintList = tintList
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    val v = (progress + 5).coerceIn(5, 100)
+                    bgOpacity = v
+                    tvOpVal.text = "$v%"
+                    binding.ivAppBackground.alpha = v / 100f
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    prefs.edit().putInt("bg_opacity", bgOpacity).apply()
+                    syncOptionsToServer()
+                }
+            })
+        }
+        opRow.addView(tvOpLabel)
+        opRow.addView(tvOpVal)
+        opRow.addView(sbOpacity)
+        root.addView(opRow)
+
+        showStyledDialog(
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Display & background")
+                .setView(root)
+                .setNeutralButton("Background...") { _, _ ->
+                    showBackgroundPreviewDialog(null)
+                }
+                .setNegativeButton("Clear bg") { _, _ ->
+                    clearBackgroundImage(deleteFile = true)
+                }
+                .setPositiveButton("Close", null)
+        )
+    }
+
+    private fun showBackgroundPreviewDialog(candidateBytes: ByteArray?) {
+        val density = resources.displayMetrics.density
+        val padH = (18 * density).toInt()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padH, (6 * density).toInt(), padH, (2 * density).toInt())
+        }
+
+        val highCol = ContextCompat.getColor(this, R.color.m2_on_surface_high)
+        val medCol = ContextCompat.getColor(this, R.color.m2_on_surface_medium)
+        val accentCol = ContextCompat.getColor(this, R.color.m2_secondary)
+        val tintList = android.content.res.ColorStateList.valueOf(accentCol)
+
+        val previewFrame = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.bg_screen))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (92 * density).toInt()
+            )
+        }
+        val ivPrev = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        val tvMock = TextView(this).apply {
+            text = "Deskmon preview\nCPU 14% - RAM 50% - Storage 49%"
+            textSize = 12f
+            setTextColor(highCol)
+            setBackgroundColor(0x88181818.toInt())
+            val p = (8 * density).toInt()
+            setPadding(p, (5 * density).toInt(), p, (5 * density).toInt())
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            )
+        }
+        previewFrame.addView(ivPrev)
+        previewFrame.addView(tvMock)
+        root.addView(previewFrame)
+
+        val customBmp: Bitmap? = if (candidateBytes != null) {
+            decodeSampledBitmap(candidateBytes, 800)
+        } else {
+            cachedBgRawBitmap
+        }
+        var previewBlurred: Bitmap? = null
+        var tempEnabled = bgEnabled
+        var tempMode = if (candidateBytes != null) 0 else bgMode
+        var tempOpacity = bgOpacity
+        var tempBlur = bgBlur
+
+        fun updatePreviewVisuals(rebuildBlur: Boolean) {
+            ivPrev.alpha = tempOpacity.coerceIn(5, 100) / 100f
+            val activeRaw = if (!tempEnabled) {
+                null
+            } else if (tempMode == 1) {
+                cachedThumbBitmap
+            } else {
+                customBmp
+            }
+            if (activeRaw == null) {
+                ivPrev.setImageDrawable(null)
+                return
+            }
+            if (rebuildBlur || previewBlurred == null) {
+                val prev = previewBlurred
+                val next = createBlurredBitmap(activeRaw, tempBlur)
+                previewBlurred = next
+                ivPrev.setImageBitmap(next)
+                if (prev != null && prev !== activeRaw && prev !== customBmp && prev !== cachedThumbBitmap && prev !== next && prev !== cachedBgBitmap) {
+                    prev.recycle()
+                }
+            }
+        }
+        updatePreviewVisuals(rebuildBlur = true)
+
+        val modeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (4 * density).toInt(), 0, 0)
+        }
+        val cbBgEnable = CheckBox(this).apply {
+            text = "Enable"
+            textSize = 12.5f
+            isChecked = tempEnabled
+            setTextColor(highCol)
+            buttonTintList = tintList
+            setOnCheckedChangeListener { _, checked ->
+                tempEnabled = checked
+                updatePreviewVisuals(rebuildBlur = true)
+            }
+        }
+        val rgMode = RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            setPadding((8 * density).toInt(), 0, 0, 0)
+        }
+        val rbCustom = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = "Custom"
+            textSize = 12.5f
+            setTextColor(highCol)
+            buttonTintList = tintList
+        }
+        val rbSync = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = "Sync playing"
+            textSize = 12.5f
+            setTextColor(highCol)
+            buttonTintList = tintList
+        }
+        rgMode.addView(rbCustom)
+        rgMode.addView(rbSync)
+        rgMode.check(if (tempMode == 1) rbSync.id else rbCustom.id)
+        rgMode.setOnCheckedChangeListener { _, checkedId ->
+            tempMode = if (checkedId == rbSync.id) 1 else 0
+            updatePreviewVisuals(rebuildBlur = true)
+        }
+        modeRow.addView(cbBgEnable)
+        modeRow.addView(rgMode)
+        root.addView(modeRow)
+
+        // Opacity row
+        val opRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (6 * density).toInt(), 0, 0)
+        }
+        val tvOpLabel = TextView(this).apply {
+            text = "Opacity"
+            textSize = 12f
+            setTextColor(medCol)
+        }
+        val tvOpVal = TextView(this).apply {
+            text = "$tempOpacity%"
+            textSize = 12f
+            setTextColor(accentCol)
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding((8 * density).toInt(), 0, (4 * density).toInt(), 0)
+        }
+        val sbOpacity = SeekBar(this).apply {
+            max = 95
+            progress = (tempOpacity - 5).coerceIn(0, 95)
+            progressTintList = tintList
+            thumbTintList = tintList
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    tempOpacity = (progress + 5).coerceIn(5, 100)
+                    tvOpVal.text = "$tempOpacity%"
+                    updatePreviewVisuals(rebuildBlur = false)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+        opRow.addView(tvOpLabel)
+        opRow.addView(tvOpVal)
+        opRow.addView(sbOpacity)
+        root.addView(opRow)
+
+        // Blur row
+        val blurRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (4 * density).toInt(), 0, 0)
+        }
+        val tvBlurLabel = TextView(this).apply {
+            text = "Blur"
+            textSize = 12f
+            setTextColor(medCol)
+        }
+        val tvBlurVal = TextView(this).apply {
+            text = "$tempBlur"
+            textSize = 12f
+            setTextColor(accentCol)
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding((8 * density).toInt(), 0, (4 * density).toInt(), 0)
+        }
+        val sbBlur = SeekBar(this).apply {
+            max = 25
+            progress = tempBlur.coerceIn(0, 25)
+            progressTintList = tintList
+            thumbTintList = tintList
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    tempBlur = progress.coerceIn(0, 25)
+                    tvBlurVal.text = "$tempBlur"
+                    updatePreviewVisuals(rebuildBlur = true)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+        blurRow.addView(tvBlurLabel)
+        blurRow.addView(tvBlurVal)
+        blurRow.addView(sbBlur)
+        root.addView(blurRow)
+
+        showStyledDialog(
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Background preview")
+                .setView(root)
+                .setNeutralButton("Pick image") { _, _ ->
+                    runCatching { bgImagePickerLauncher.launch("image/*") }
+                }
+                .setNegativeButton("Clear saved") { _, _ ->
+                    clearBackgroundImage(deleteFile = true)
+                    if (bgMode == 1 && bgEnabled) {
+                        refreshDisplayedBackgroundBlur()
+                    }
+                }
+                .setPositiveButton("Apply") { _, _ ->
+                    bgEnabled = tempEnabled
+                    bgMode = tempMode
+                    bgOpacity = tempOpacity
+                    bgBlur = tempBlur
+                    prefs.edit()
+                        .putBoolean("bg_enabled", bgEnabled)
+                        .putInt("bg_mode", bgMode)
+                        .putInt("bg_opacity", bgOpacity)
+                        .putInt("bg_blur", bgBlur)
+                        .apply()
+                    if (candidateBytes != null) {
+                        applyBackgroundBytes(candidateBytes, saveToDisk = true)
+                    } else {
+                        refreshDisplayedBackgroundBlur()
+                    }
+                    syncOptionsToServer()
+                }
+        )
     }
 
     private fun showFontSelectorDialog() {
@@ -1310,7 +1870,12 @@ class MainActivity : AppCompatActivity() {
             l3TextScale = l3TextScale,
             l3MetricScale = l3MetricScale,
             showTopBar = showTopBar,
-            showLogo = showLogo
+            showLogo = showLogo,
+            fullscreen = isFullscreen,
+            bgEnabled = bgEnabled,
+            bgMode = bgMode,
+            bgOpacity = bgOpacity,
+            bgBlur = bgBlur
         )
     }
 
@@ -1351,7 +1916,7 @@ class MainActivity : AppCompatActivity() {
             cb.setOnCheckedChangeListener { buttonView, isChecked ->
                 if (!isChecked && visibleL3Count() <= 1) {
                     buttonView.isChecked = true
-                    Toast.makeText(this, "Keep at least 1 component visible", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Keep at least 1 component visible", Toast.LENGTH_SHORT).show()
                     return@setOnCheckedChangeListener
                 }
                 onChange(isChecked)
@@ -1362,18 +1927,57 @@ class MainActivity : AppCompatActivity() {
             parent.addView(cb)
         }
 
-        addToggle(colLeft, "Task & Note", l3ShowTask) { l3ShowTask = it }
-        addToggle(colLeft, "Timer & Pomodoro", l3ShowTimer) { l3ShowTimer = it }
-        addToggle(colLeft, "Resource Rings", l3ShowRings) { l3ShowRings = it }
-        addToggle(colRight, "Now Playing", showPlayingPanel) { showPlayingPanel = it }
-        addToggle(colRight, "OS Notifications", l3ShowNotif) { l3ShowNotif = it }
+        val isL3 = binding.layoutFlipper.displayedChild == 2
+        if (isL3) {
+            addToggle(colLeft, "Task & Note", l3ShowTask) { l3ShowTask = it }
+            addToggle(colLeft, "Timer & Pomodoro", l3ShowTimer) { l3ShowTimer = it }
+            addToggle(colLeft, "Resource Rings", l3ShowRings) { l3ShowRings = it }
+        }
+        addToggle(if (isL3) colRight else colLeft, "Now Playing", showPlayingPanel) { showPlayingPanel = it }
+        if (isL3) {
+            addToggle(colRight, "OS Notifications", l3ShowNotif) { l3ShowNotif = it }
+        }
 
-        showStyledDialog(
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Visible components")
-                .setView(row)
-                .setPositiveButton("Close", null)
-        )
+        val cbSwap = CheckBox(this).apply {
+            text = "Playing on left"
+            textSize = 13.5f
+            isChecked = playingOnLeft
+            setTextColor(textCol)
+            buttonTintList = tintList
+            setOnCheckedChangeListener { _, checked ->
+                playingOnLeft = checked
+                prefs.edit().putBoolean("playing_on_left", playingOnLeft).apply()
+                applyPlayingSideOrder()
+                syncOptionsToServer()
+            }
+        }
+        colLeft.addView(cbSwap)
+
+        val cbFs = CheckBox(this).apply {
+            text = "Fullscreen"
+            textSize = 13.5f
+            isChecked = isFullscreen
+            setTextColor(textCol)
+            buttonTintList = tintList
+            setOnCheckedChangeListener { _, checked ->
+                isFullscreen = checked
+                prefs.edit().putBoolean("fullscreen", isFullscreen).apply()
+                applyFullscreenMode()
+                syncOptionsToServer()
+            }
+        }
+        colRight.addView(cbFs)
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle("Panels & view")
+            .setView(row)
+            .setPositiveButton("Close", null)
+        if (isL3) {
+            builder.setNeutralButton("Resize Layout 3...") { _, _ ->
+                showLayout3ResizeDialog()
+            }
+        }
+        showStyledDialog(builder)
     }
 
     private fun showLayout3ResizeDialog() {
@@ -1607,12 +2211,6 @@ class MainActivity : AppCompatActivity() {
 
         // Layout 1
         binding.tvStatus1.text = status
-        binding.btnConnect.setColorFilter(
-            ContextCompat.getColor(
-                this,
-                if (connected) R.color.accent_ram else R.color.m2_on_surface_high
-            )
-        )
         binding.statusDot1.setBackgroundResource(dotRes)
 
         // Layout 2: Never hide option bar until connected
@@ -1629,6 +2227,8 @@ class MainActivity : AppCompatActivity() {
             // Reset so server-side options always take priority upon next connect
             lastAppliedCfgSeq = 0
             lastAppliedPowerSeq = 0
+            lastPushImgSeq = -1
+            lastBgSeq = -1
         }
     }
 
@@ -1716,7 +2316,39 @@ class MainActivity : AppCompatActivity() {
                 editor.putBoolean("show_logo", showLogo)
                 applyLogoVisibility()
             }
+            if (isFullscreen != s.cfgFullscreen) {
+                isFullscreen = s.cfgFullscreen
+                editor.putBoolean("fullscreen", isFullscreen)
+                applyFullscreenMode()
+            }
+            val nextBgOp = s.cfgBgOpacity.coerceIn(5, 100)
+            if (bgOpacity != nextBgOp) {
+                bgOpacity = nextBgOp
+                editor.putInt("bg_opacity", bgOpacity)
+                binding.ivAppBackground.alpha = bgOpacity / 100f
+            }
+            val nextBgBlur = s.cfgBgBlur.coerceIn(0, 25)
+            var bgBlurNeedsRefresh = false
+            if (bgEnabled != s.cfgBgEnabled) {
+                bgEnabled = s.cfgBgEnabled
+                editor.putBoolean("bg_enabled", bgEnabled)
+                bgBlurNeedsRefresh = true
+            }
+            val nextBgMode = s.cfgBgMode.coerceIn(0, 1)
+            if (bgMode != nextBgMode) {
+                bgMode = nextBgMode
+                editor.putInt("bg_mode", bgMode)
+                bgBlurNeedsRefresh = true
+            }
+            if (bgBlur != nextBgBlur) {
+                bgBlur = nextBgBlur
+                editor.putInt("bg_blur", bgBlur)
+                bgBlurNeedsRefresh = true
+            }
             editor.apply()
+            if (bgBlurNeedsRefresh) {
+                refreshDisplayedBackgroundBlur()
+            }
             if (l3Changed) {
                 applyLayout3Config()
             }
@@ -1755,6 +2387,35 @@ class MainActivity : AppCompatActivity() {
                 "close_only" -> executePowerAction(closeApp = true, lockScreen = false)
             }
         }
+
+        if (s.pushImgSeq != lastPushImgSeq) {
+            lastPushImgSeq = s.pushImgSeq
+            if (s.pushImgBase64.isNotEmpty()) {
+                val bytes = runCatching { Base64.decode(s.pushImgBase64, Base64.DEFAULT) }.getOrNull()
+                val bmp = bytes?.let { decodeSampledBitmap(it, 960) }
+                if (bmp != null && bytes != null) {
+                    runCatching { java.io.File(filesDir, "last_push.jpg").writeBytes(bytes) }
+                    clearPushImageOverlay()
+                    cachedPushBitmap = bmp
+                    binding.ivPushImage.setImageBitmap(bmp)
+                    binding.overlayPushImage.visibility = View.VISIBLE
+                }
+            } else {
+                clearPushImageOverlay()
+            }
+        }
+
+        if (s.bgSeq > 0 && s.bgSeq != lastBgSeq) {
+            lastBgSeq = s.bgSeq
+            if (s.bgBase64.isNotEmpty()) {
+                runCatching {
+                    val bytes = Base64.decode(s.bgBase64, Base64.DEFAULT)
+                    applyBackgroundBytes(bytes, saveToDisk = true)
+                }
+            } else {
+                clearBackgroundImage(deleteFile = true)
+            }
+        }
     }
 
     private fun renderSnapshot(s: ResourceSnapshot) {
@@ -1787,6 +2448,9 @@ class MainActivity : AppCompatActivity() {
             }
             clearCachedThumb()
             cachedThumbBitmap = newBmp
+            if (bgEnabled && bgMode == 1) {
+                refreshDisplayedBackgroundBlur()
+            }
         }
 
         // Always cache notification payload regardless of active layout
@@ -1988,7 +2652,7 @@ class MainActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER_VERTICAL
             }
             val tvMeta = TextView(this).apply {
-                text = if (item.time.isNotBlank()) "${item.app}  •  ${item.time}" else item.app
+                text = if (item.time.isNotBlank()) "${item.app} - ${item.time}" else item.app
                 setTextColor(accentColor)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f * tScale)
                 maxLines = 1
@@ -2174,7 +2838,7 @@ class MainActivity : AppCompatActivity() {
                     val port = etPort.text.toString().toIntOrNull() ?: MonitorClient.DEFAULT_PORT
                     if (host.isNotEmpty()) {
                         prefs.edit().putString("host", host).putInt("port", port).apply()
-                        Toast.makeText(this, "Saved $host:$port", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(applicationContext, "Saved $host:$port", Toast.LENGTH_SHORT).show()
                     }
                 }
                 .setNegativeButton("Cancel", null)
@@ -2425,13 +3089,13 @@ class MainActivity : AppCompatActivity() {
         }
         val adapter = bluetoothAdapter
         if (adapter == null || !adapter.isEnabled) {
-            Toast.makeText(this, "Please enable Bluetooth first", Toast.LENGTH_SHORT).show()
+            Toast.makeText(applicationContext, "Please enable Bluetooth first", Toast.LENGTH_SHORT).show()
             return
         }
 
         val paired = adapter.bondedDevices?.toList().orEmpty()
         if (paired.isEmpty()) {
-            Toast.makeText(this, "No paired devices. Pair your PC in Settings first.", Toast.LENGTH_LONG).show()
+            Toast.makeText(applicationContext, "No paired devices. Pair your PC in Settings first.", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -2445,7 +3109,7 @@ class MainActivity : AppCompatActivity() {
                         .putString("bt_address", device.address)
                         .putString("bt_name", device.name ?: device.address)
                         .apply()
-                    Toast.makeText(this, "Selected ${device.name ?: device.address}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Selected ${device.name ?: device.address}", Toast.LENGTH_SHORT).show()
                 }
                 .setNegativeButton("Cancel", null)
         )

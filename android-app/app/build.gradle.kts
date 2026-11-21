@@ -11,8 +11,8 @@ android {
         // Android 7.1.2 = API 25; minSdk 24 covers 7.0+ cleanly
         minSdk = 24
         targetSdk = 33
-        versionCode = 1
-        versionName = "26.1119"
+        versionCode = 2
+        versionName = "26.1121"
     }
 
     buildTypes {

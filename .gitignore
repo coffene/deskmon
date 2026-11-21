@@ -10,6 +10,7 @@ windows-server/.venv/
 windows-server/__pycache__/
 **/__pycache__/
 **/server_config.json
+**/server_bg.jpg
 windows-server/*.exe
 !windows-server/dist/DeskmonServer.exe
 windows-server/dist/PCMonitorServer.exe

@@ -595,6 +595,9 @@ namespace PCMonitorServer
         private TextBox tbTask;
         private Button btnDuePicker;
         private TextBox tbNote;
+        private TextBox tbPort;
+        private Border portBoxBorder;
+        private Button btnApplyPort;
         private TextBlock tvFeedback;
 
         private string currentDueText = "";
@@ -605,18 +608,22 @@ namespace PCMonitorServer
 
         private readonly Button[] btnLayouts = new Button[3];
         private readonly Button[] btnFonts = new Button[4];
-        private Button btnPlaying;
-        private Button btnSwapSide;
+        private CheckBox chkL3Task;
+        private CheckBox chkL3Timer;
+        private CheckBox chkL3Rings;
+        private CheckBox chkPlaying;
+        private CheckBox chkL3Notif;
+        private CheckBox chkShowTopBar;
+        private CheckBox chkShowLogo;
+        private CheckBox chkSwapSide;
+        private CheckBox chkFullscreen;
+        private CheckBox chkStartWithWin;
+        private CheckBox chkShowOnStart;
+        private bool suppressCheckEvents = false;
         private Button btnTimeMode;
-        private Button btnL3Task;
-        private Button btnL3Timer;
-        private Button btnL3Rings;
-        private Button btnL3Notif;
         private Button btnL3Resize;
-        private Button btnShowTopBar;
-        private Button btnShowLogo;
-        private Button btnStartWithWin;
-        private Button btnShowOnStart;
+        private Button btnPushImage;
+        private Button btnBackground;
         private readonly List<Button> timerButtons = new List<Button>();
         private readonly List<Button> powerButtons = new List<Button>();
 
@@ -640,6 +647,7 @@ namespace PCMonitorServer
         private int l3MetricScale = 100;
         private bool remoteShowTopBar = true;
         private bool remoteShowLogo = true;
+        private bool remoteFullscreen = false;
 
         private MonitorServer backend;
         private string localIp;
@@ -655,7 +663,7 @@ namespace PCMonitorServer
             theme = ThemePalette.LoadFromWindows();
 
             Title = "Deskmon server";
-            Width = 780;
+            Width = 820;
             Height = 640;
             SizeToContent = SizeToContent.Manual;
             ResizeMode = ResizeMode.CanMinimize;
@@ -793,7 +801,9 @@ namespace PCMonitorServer
             rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
             rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var leftCol = new StackPanel();
+            var leftCol = new Grid();
+            leftCol.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            leftCol.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             Grid.SetColumn(leftCol, 0);
 
             // Card 1: Connection with prominent Enable/Disable server button
@@ -818,17 +828,74 @@ namespace PCMonitorServer
             rowDisabled = AddIconInfoRow(statusStack, "\uE711", "Server disabled", out dummyDisabled);
             rowDisabled.Visibility = Visibility.Collapsed;
 
+            var portRow = new Grid();
+            portRow.Margin = new Thickness(0, 8, 0, 0);
+            portRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            portRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            portRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var lblPort = new TextBlock();
+            lblPort.Text = "Port";
+            lblPort.FontSize = 12;
+            lblPort.Foreground = theme.TextSecondary;
+            lblPort.VerticalAlignment = VerticalAlignment.Center;
+            lblPort.Margin = new Thickness(0, 0, 10, 0);
+            Grid.SetColumn(lblPort, 0);
+
+            tbPort = new TextBox();
+            tbPort.Text = MonitorServer.DefaultTcpPort.ToString();
+            tbPort.FontSize = 12.5;
+            tbPort.Foreground = theme.TextPrimary;
+            tbPort.Background = Brushes.Transparent;
+            tbPort.BorderThickness = new Thickness(0);
+            tbPort.Padding = new Thickness(8, 5, 8, 5);
+            tbPort.VerticalContentAlignment = VerticalAlignment.Center;
+            tbPort.CaretBrush = theme.TextPrimary;
+            tbPort.KeyDown += delegate(object s, KeyEventArgs args)
+            {
+                if (args.Key == Key.Enter) ApplyServerPort();
+            };
+
+            portBoxBorder = new Border();
+            portBoxBorder.Background = theme.InputBg;
+            portBoxBorder.BorderBrush = theme.CardBorder;
+            portBoxBorder.BorderThickness = new Thickness(1);
+            portBoxBorder.CornerRadius = new CornerRadius(4);
+            portBoxBorder.Child = tbPort;
+            Grid.SetColumn(portBoxBorder, 1);
+
+            btnApplyPort = CreateFluentButton("Apply", false, new Thickness(14, 5, 14, 5));
+            btnApplyPort.FontSize = 12;
+            btnApplyPort.FontWeight = FontWeights.SemiBold;
+            btnApplyPort.Margin = new Thickness(8, 0, 0, 0);
+            btnApplyPort.Click += delegate { ApplyServerPort(); };
+            Grid.SetColumn(btnApplyPort, 2);
+
+            portRow.Children.Add(lblPort);
+            portRow.Children.Add(portBoxBorder);
+            portRow.Children.Add(btnApplyPort);
+
+            var srvChkRow = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1, Columns = 2, Margin = new Thickness(0, 8, 0, 0) };
+            chkStartWithWin = CreateMediaCheckBox("Start with Windows", delegate { ToggleStartWithWindows(); });
+            chkShowOnStart = CreateMediaCheckBox("Show window on startup", delegate { ToggleShowWindowOnStartup(); });
+            srvChkRow.Children.Add(chkStartWithWin);
+            srvChkRow.Children.Add(chkShowOnStart);
+
             btnServerPower = CreateFluentButton("Disable server", false, new Thickness(14, 7, 14, 7));
             btnServerPower.FontSize = 13;
             btnServerPower.FontWeight = FontWeights.SemiBold;
             btnServerPower.HorizontalAlignment = HorizontalAlignment.Stretch;
-            btnServerPower.Margin = new Thickness(0, 10, 0, 0);
+            btnServerPower.Margin = new Thickness(0, 8, 0, 0);
             btnServerPower.Click += delegate { ToggleServerEnabled(); };
 
             var connCardContent = new StackPanel();
             connCardContent.Children.Add(statusStack);
+            connCardContent.Children.Add(portRow);
+            connCardContent.Children.Add(srvChkRow);
             connCardContent.Children.Add(btnServerPower);
-            leftCol.Children.Add(CreateTitledCard("Connection", connCardContent, new Thickness(0, 0, 0, 10)));
+            var connCard = CreateTitledCard("Server & connection", connCardContent, new Thickness(0, 0, 0, 10));
+            Grid.SetRow(connCard, 0);
+            leftCol.Children.Add(connCard);
 
             // Card 2 (Right Column): Current task + spacious Note with formatting toolbar
             var taskGrid = new Grid();
@@ -896,7 +963,7 @@ namespace PCMonitorServer
             tbNote.TextWrapping = TextWrapping.Wrap;
             tbNote.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             tbNote.VerticalContentAlignment = VerticalAlignment.Top;
-            tbNote.MinHeight = 220;
+            tbNote.MinHeight = 135;
             Grid.SetRow(tbNote, 2);
             taskGrid.Children.Add(tbNote);
 
@@ -924,70 +991,106 @@ namespace PCMonitorServer
             taskGrid.Children.Add(btnRow);
 
             var taskCard = CreateStretchTitledCard("Current task", taskGrid, new Thickness(0));
-            Grid.SetColumn(taskCard, 2);
+            Grid.SetRow(taskCard, 1);
 
-            // Card 3 (Left Column bottom): Categorized App Options (dim unavailable items per active layout)
-            var remoteStack = new StackPanel();
+            // Card 2 (Left Column bottom): Display & layout (Layout + Font + Panels CheckBoxes + Display action buttons)
+            var displayStack = new StackPanel();
 
-            remoteStack.Children.Add(CreateCategoryLabel("Layout"));
-            var catLayout = new WrapPanel();
-            catLayout.Margin = new Thickness(0, 0, 0, 6);
+            displayStack.Children.Add(CreateCategoryLabel("Layout"));
+            var catLayout = new WrapPanel { Margin = new Thickness(0, 0, 0, 6) };
             btnLayouts[0] = AddSmallButton(catLayout, "Layout 1", delegate { SetRemoteLayout(0); });
             btnLayouts[1] = AddSmallButton(catLayout, "Layout 2", delegate { SetRemoteLayout(1); });
             btnLayouts[2] = AddSmallButton(catLayout, "Layout 3", delegate { SetRemoteLayout(2); });
-            remoteStack.Children.Add(catLayout);
+            displayStack.Children.Add(catLayout);
 
-            remoteStack.Children.Add(CreateCategoryLabel("Font"));
-            var catFont = new WrapPanel();
-            catFont.Margin = new Thickness(0, 0, 0, 6);
+            displayStack.Children.Add(CreateCategoryLabel("Font"));
+            var catFont = new WrapPanel { Margin = new Thickness(0, 0, 0, 6) };
             btnFonts[0] = AddSmallButton(catFont, "Fira Sans", delegate { SetRemoteFont(0); });
             btnFonts[1] = AddSmallButton(catFont, "IBM Plex", delegate { SetRemoteFont(1); });
             btnFonts[2] = AddSmallButton(catFont, "Barlow", delegate { SetRemoteFont(2); });
             btnFonts[3] = AddSmallButton(catFont, "Roboto", delegate { SetRemoteFont(3); });
-            remoteStack.Children.Add(catFont);
+            displayStack.Children.Add(catFont);
 
-            remoteStack.Children.Add(CreateCategoryLabel("Components & media"));
-            var catMedia = new WrapPanel();
-            catMedia.Margin = new Thickness(0, 0, 0, 6);
-            btnL3Task = AddSmallButton(catMedia, "Task", delegate { ToggleL3Component(ref l3ShowTask, "Task"); });
-            btnL3Timer = AddSmallButton(catMedia, "Timer", delegate { ToggleL3Component(ref l3ShowTimer, "Timer"); });
-            btnL3Rings = AddSmallButton(catMedia, "Rings", delegate { ToggleL3Component(ref l3ShowRings, "Rings"); });
-            btnPlaying = AddSmallButton(catMedia, "Playing", delegate { TogglePlayingOption(); });
-            btnL3Notif = AddSmallButton(catMedia, "Notif", delegate { ToggleL3Component(ref l3ShowNotif, "Notifications"); });
-            btnSwapSide = AddSmallButton(catMedia, "Swap side", delegate
-            {
-                remotePlayingLeft = !remotePlayingLeft;
-                UpdateOptionHighlights();
-                SendRemoteConfig();
-                ShowFeedback("Swapped side");
-            });
-            btnTimeMode = AddSmallButton(catMedia, "Time mode 1", delegate
-            {
-                remoteTimeMode = (remoteTimeMode + 1) % 4;
-                UpdateOptionHighlights();
-                SendRemoteConfig();
-                ShowFeedback("Time mode " + (remoteTimeMode + 1));
-            });
-            btnL3Resize = AddSmallButton(catMedia, "Resize...", delegate { OpenLayout3ResizePopup(); });
-            btnShowTopBar = AddSmallButton(catMedia, "Top bar", delegate
+            displayStack.Children.Add(CreateCategoryLabel("Panels & view"));
+            var chkGrid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 3, Columns = 3, Margin = new Thickness(0, 2, 0, 8) };
+            chkL3Task = CreateMediaCheckBox("Task", delegate { ToggleL3Component(ref l3ShowTask, "Task"); });
+            chkL3Timer = CreateMediaCheckBox("Timer", delegate { ToggleL3Component(ref l3ShowTimer, "Timer"); });
+            chkL3Rings = CreateMediaCheckBox("Rings", delegate { ToggleL3Component(ref l3ShowRings, "Rings"); });
+            chkPlaying = CreateMediaCheckBox("Playing", delegate { TogglePlayingOption(); });
+            chkL3Notif = CreateMediaCheckBox("Notif", delegate { ToggleL3Component(ref l3ShowNotif, "Notifications"); });
+            chkShowTopBar = CreateMediaCheckBox("Top bar", delegate
             {
                 remoteShowTopBar = !remoteShowTopBar;
                 UpdateOptionHighlights();
                 SendRemoteConfig();
                 ShowFeedback(remoteShowTopBar ? "Top bar on" : "Top bar off");
             });
-            btnShowLogo = AddSmallButton(catMedia, "Logo", delegate
+            chkShowLogo = CreateMediaCheckBox("Logo", delegate
             {
                 remoteShowLogo = !remoteShowLogo;
                 UpdateOptionHighlights();
                 SendRemoteConfig();
                 ShowFeedback(remoteShowLogo ? "Logo on" : "Logo off");
             });
-            remoteStack.Children.Add(catMedia);
+            chkSwapSide = CreateMediaCheckBox("Swap side", delegate
+            {
+                remotePlayingLeft = !remotePlayingLeft;
+                UpdateOptionHighlights();
+                SendRemoteConfig();
+                ShowFeedback("Swapped side");
+            });
+            chkFullscreen = CreateMediaCheckBox("Fullscreen", delegate
+            {
+                remoteFullscreen = !remoteFullscreen;
+                UpdateOptionHighlights();
+                SendRemoteConfig();
+                ShowFeedback(remoteFullscreen ? "Fullscreen on" : "Fullscreen off");
+            });
+            chkGrid.Children.Add(chkL3Task);
+            chkGrid.Children.Add(chkL3Timer);
+            chkGrid.Children.Add(chkL3Rings);
+            chkGrid.Children.Add(chkPlaying);
+            chkGrid.Children.Add(chkL3Notif);
+            chkGrid.Children.Add(chkShowTopBar);
+            chkGrid.Children.Add(chkShowLogo);
+            chkGrid.Children.Add(chkSwapSide);
+            chkGrid.Children.Add(chkFullscreen);
+            displayStack.Children.Add(chkGrid);
 
-            remoteStack.Children.Add(CreateCategoryLabel("Timer & Pomodoro"));
-            var catTimer = new WrapPanel();
-            catTimer.Margin = new Thickness(0, 0, 0, 6);
+            var dispBtnGrid = new Grid();
+            dispBtnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            dispBtnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6) });
+            dispBtnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            dispBtnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6) });
+            dispBtnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            btnTimeMode = CreateActionGridButton("Time mode: 1", delegate
+            {
+                remoteTimeMode = (remoteTimeMode + 1) % 4;
+                UpdateOptionHighlights();
+                SendRemoteConfig();
+                ShowFeedback("Time mode " + (remoteTimeMode + 1));
+            });
+            Grid.SetColumn(btnTimeMode, 0);
+            dispBtnGrid.Children.Add(btnTimeMode);
+
+            btnL3Resize = CreateActionGridButton("Resize L3...", delegate { OpenLayout3ResizePopup(); });
+            Grid.SetColumn(btnL3Resize, 2);
+            dispBtnGrid.Children.Add(btnL3Resize);
+
+            btnBackground = CreateActionGridButton("Background...", delegate { OpenImagePicker(true); });
+            Grid.SetColumn(btnBackground, 4);
+            dispBtnGrid.Children.Add(btnBackground);
+
+            displayStack.Children.Add(dispBtnGrid);
+            var optCard = CreateTitledCard("Display & layout", displayStack, new Thickness(0));
+            Grid.SetRow(optCard, 1);
+            leftCol.Children.Add(optCard);
+
+            // Card 3 (Right Column top): Quick actions (Timer & Pomodoro + Push image & Device power)
+            var quickStack = new StackPanel();
+            quickStack.Children.Add(CreateCategoryLabel("Timer & Pomodoro"));
+            var catTimer = new WrapPanel { Margin = new Thickness(0, 0, 0, 6) };
             timerButtons.Add(AddSmallButton(catTimer, "10m", delegate { SendRemoteTimer("set_min", 10); }));
             timerButtons.Add(AddSmallButton(catTimer, "15m", delegate { SendRemoteTimer("set_min", 15); }));
             timerButtons.Add(AddSmallButton(catTimer, "20m", delegate { SendRemoteTimer("set_min", 20); }));
@@ -997,25 +1100,28 @@ namespace PCMonitorServer
             timerButtons.Add(AddSmallButton(catTimer, "Start / Pause", delegate { SendRemoteTimer("toggle", 0); }));
             timerButtons.Add(AddSmallButton(catTimer, "Reset", delegate { SendRemoteTimer("reset", 0); }));
             timerButtons.Add(AddSmallButton(catTimer, "Stop ring", delegate { SendRemoteTimer("stop_ring", 0); }));
-            remoteStack.Children.Add(catTimer);
+            quickStack.Children.Add(catTimer);
 
-            remoteStack.Children.Add(CreateCategoryLabel("Device power"));
+            quickStack.Children.Add(CreateCategoryLabel("Device & screen"));
             var catPower = new WrapPanel();
-            catPower.Margin = new Thickness(0, 0, 0, 6);
+            btnPushImage = AddSmallButton(catPower, "Push image...", delegate { OpenImagePicker(false); });
             powerButtons.Add(AddSmallButton(catPower, "Close app & lock", delegate { SendRemotePower("close_and_lock", "Sent: Close app & lock"); }));
             powerButtons.Add(AddSmallButton(catPower, "Lock screen", delegate { SendRemotePower("lock_only", "Sent: Lock screen"); }));
             powerButtons.Add(AddSmallButton(catPower, "Close app", delegate { SendRemotePower("close_only", "Sent: Close app"); }));
-            remoteStack.Children.Add(catPower);
+            quickStack.Children.Add(catPower);
 
-            remoteStack.Children.Add(CreateCategoryLabel("Server"));
-            var catServer = new WrapPanel();
-            btnStartWithWin = AddSmallButton(catServer, "Start with Windows", delegate { ToggleStartWithWindows(); });
-            btnShowOnStart = AddSmallButton(catServer, "Show window on startup", delegate { ToggleShowWindowOnStartup(); });
-            remoteStack.Children.Add(catServer);
+            var quickCard = CreateTitledCard("Quick actions", quickStack, new Thickness(0, 0, 0, 10));
+            Grid.SetRow(quickCard, 0);
 
-            leftCol.Children.Add(CreateTitledCard("App options", remoteStack, new Thickness(0)));
+            var rightCol = new Grid();
+            rightCol.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rightCol.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            rightCol.Children.Add(quickCard);
+            rightCol.Children.Add(taskCard);
+            Grid.SetColumn(rightCol, 2);
+
             rootGrid.Children.Add(leftCol);
-            rootGrid.Children.Add(taskCard);
+            rootGrid.Children.Add(rightCol);
 
             UpdateOptionHighlights();
 
@@ -1026,7 +1132,7 @@ namespace PCMonitorServer
             outerGrid.Children.Add(rootGrid);
 
             var tvVersion = new TextBlock();
-            tvVersion.Text = "26.1119";
+            tvVersion.Text = "26.1121";
             tvVersion.FontSize = 11;
             tvVersion.Foreground = theme.TextSecondary;
             tvVersion.HorizontalAlignment = HorizontalAlignment.Right;
@@ -1145,6 +1251,544 @@ namespace PCMonitorServer
             }
         }
 
+        private void ApplyServerPort()
+        {
+            if (backend == null || tbPort == null) return;
+            if (serverEnabled)
+            {
+                ShowFeedback("Disable server to change port");
+                tbPort.Text = backend.TcpPort.ToString();
+                return;
+            }
+            int port;
+            if (!int.TryParse((tbPort.Text ?? "").Trim(), out port) || port < 1024 || port > 65535)
+            {
+                ShowFeedback("Port must be 1024-65535");
+                tbPort.Text = backend.TcpPort.ToString();
+                return;
+            }
+            if (port == backend.TcpPort)
+            {
+                ShowFeedback("Port " + port);
+                return;
+            }
+            backend.SetPort(port);
+            tbPort.Text = backend.TcpPort.ToString();
+            ShowFeedback("Port changed to " + backend.TcpPort);
+        }
+
+        private static System.Windows.Media.Imaging.BitmapImage DecodeBase64Bitmap(string b64)
+        {
+            if (string.IsNullOrEmpty(b64)) return null;
+            try
+            {
+                byte[] bytes = Convert.FromBase64String(b64);
+                var bi = new System.Windows.Media.Imaging.BitmapImage();
+                using (var ms = new MemoryStream(bytes))
+                {
+                    bi.BeginInit();
+                    bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bi.StreamSource = ms;
+                    bi.EndInit();
+                    bi.Freeze();
+                }
+                return bi;
+            }
+            catch { return null; }
+        }
+
+        private void OpenImagePicker(bool isBackground)
+        {
+            var dlg = new Window();
+            dlg.Owner = this;
+            dlg.Title = isBackground ? "App background" : "Push image";
+            dlg.Width = 440;
+            dlg.SizeToContent = SizeToContent.Height;
+            dlg.ResizeMode = ResizeMode.NoResize;
+            dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            dlg.Background = theme.WindowBg;
+            dlg.FontFamily = uiFont;
+            dlg.SourceInitialized += delegate
+            {
+                try
+                {
+                    IntPtr hwnd = new WindowInteropHelper(dlg).Handle;
+                    int dark = theme.IsDark ? 1 : 0;
+                    if (NativeMethods.DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int)) != 0)
+                    {
+                        NativeMethods.DwmSetWindowAttribute(hwnd, 19, ref dark, sizeof(int));
+                    }
+                }
+                catch { }
+            };
+
+            string savedCustomB64 = isBackground && backend != null ? backend.GetBackgroundBase64() : "";
+            string previewB64 = savedCustomB64;
+            bool initBgEnabled = backend == null || backend.CfgBgEnabled;
+            int initBgMode = backend != null ? backend.CfgBgMode : 0;
+            int initOp = backend != null ? backend.CfgBgOpacity : 32;
+            int initBlur = backend != null ? backend.CfgBgBlur : 6;
+
+            var root = new StackPanel { Margin = new Thickness(14) };
+            var lbl = CreateFieldLabel(isBackground ? "Image URL or local file for background" : "Image URL or local file to display");
+            root.Children.Add(lbl);
+
+            var inputRow = new Grid();
+            inputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            inputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            inputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var tbSrc = new TextBox();
+            tbSrc.FontSize = 12.5;
+            tbSrc.Foreground = theme.TextPrimary;
+            tbSrc.Background = theme.InputBg;
+            tbSrc.BorderBrush = theme.CardBorder;
+            tbSrc.BorderThickness = new Thickness(1);
+            tbSrc.Padding = new Thickness(8, 6, 8, 6);
+            tbSrc.CaretBrush = theme.TextPrimary;
+            Grid.SetColumn(tbSrc, 0);
+
+            var tvStatus = new TextBlock
+            {
+                FontSize = 11.5,
+                Foreground = theme.TextSecondary,
+                Margin = new Thickness(0, 6, 0, 0)
+            };
+
+            // Live 16:9 preview box
+            var previewGrid = new Grid();
+            var ivPreview = new Image
+            {
+                Stretch = isBackground ? Stretch.UniformToFill : Stretch.Uniform,
+                Opacity = isBackground ? (initOp / 100.0) : 1.0
+            };
+            var blurEffect = new System.Windows.Media.Effects.BlurEffect
+            {
+                Radius = isBackground ? initBlur : 0
+            };
+            ivPreview.Effect = blurEffect;
+            previewGrid.Children.Add(ivPreview);
+
+            var tvPreviewEmpty = new TextBlock
+            {
+                Text = "No preview loaded",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(140, 140, 140)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            previewGrid.Children.Add(tvPreviewEmpty);
+
+            if (isBackground)
+            {
+                var mockCard = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(140, 24, 24, 24)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(5),
+                    Padding = new Thickness(12, 8, 12, 8),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(12, 0, 12, 10)
+                };
+                var mockStack = new StackPanel();
+                mockStack.Children.Add(new TextBlock
+                {
+                    Text = "Deskmon preview",
+                    FontSize = 12.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brushes.White
+                });
+                mockStack.Children.Add(new TextBlock
+                {
+                    Text = "CPU 14%   -   RAM 50%   -   Storage 49%",
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(3, 218, 198)),
+                    Margin = new Thickness(0, 2, 0, 0)
+                });
+                mockCard.Child = mockStack;
+                previewGrid.Children.Add(mockCard);
+            }
+
+            var previewBorder = new Border
+            {
+                Height = 148,
+                Background = new SolidColorBrush(Color.FromRgb(18, 18, 18)),
+                BorderBrush = theme.CardBorder,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                ClipToBounds = true,
+                Margin = new Thickness(0, 10, 0, 2),
+                Child = previewGrid
+            };
+
+            if (!string.IsNullOrEmpty(previewB64))
+            {
+                var bmp = DecodeBase64Bitmap(previewB64);
+                if (bmp != null)
+                {
+                    ivPreview.Source = bmp;
+                    tvPreviewEmpty.Visibility = Visibility.Collapsed;
+                }
+            }
+
+            Action loadPreviewAsync = delegate
+            {
+                string src = (tbSrc.Text ?? "").Trim();
+                if (string.IsNullOrEmpty(src)) return;
+                tvStatus.Text = "Loading preview...";
+                System.Threading.ThreadPool.QueueUserWorkItem(delegate
+                {
+                    string b64 = "";
+                    try
+                    {
+                        b64 = WinRtHelper.LoadAndEncodeImageBase64(src, isBackground ? 800 : 960, isBackground ? 480 : 540, 82L);
+                    }
+                    catch { b64 = ""; }
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        if (string.IsNullOrEmpty(b64))
+                        {
+                            tvStatus.Text = "Failed to load image";
+                            return;
+                        }
+                        previewB64 = b64;
+                        var bmp = DecodeBase64Bitmap(b64);
+                        if (bmp != null)
+                        {
+                            ivPreview.Source = bmp;
+                            tvPreviewEmpty.Visibility = Visibility.Collapsed;
+                            tvStatus.Text = "Preview ready";
+                        }
+                    }));
+                });
+            };
+
+            tbSrc.KeyDown += delegate(object s, KeyEventArgs args)
+            {
+                if (args.Key == Key.Enter) loadPreviewAsync();
+            };
+
+            var btnPreview = CreateFluentButton("Preview", false, new Thickness(10, 6, 10, 6));
+            btnPreview.FontSize = 12;
+            btnPreview.FontWeight = FontWeights.Normal;
+            btnPreview.Margin = new Thickness(6, 0, 0, 0);
+            btnPreview.Click += delegate { loadPreviewAsync(); };
+            Grid.SetColumn(btnPreview, 1);
+
+            var btnBrowse = CreateFluentButton("Browse...", false, new Thickness(10, 6, 10, 6));
+            btnBrowse.FontSize = 12;
+            btnBrowse.FontWeight = FontWeights.Normal;
+            btnBrowse.Margin = new Thickness(6, 0, 0, 0);
+            btnBrowse.Click += delegate
+            {
+                var ofd = new Microsoft.Win32.OpenFileDialog();
+                ofd.Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif|All files|*.*";
+                if (ofd.ShowDialog(dlg) == true)
+                {
+                    tbSrc.Text = ofd.FileName;
+                    loadPreviewAsync();
+                }
+            };
+            Grid.SetColumn(btnBrowse, 2);
+
+            inputRow.Children.Add(tbSrc);
+            inputRow.Children.Add(btnPreview);
+            inputRow.Children.Add(btnBrowse);
+            root.Children.Add(inputRow);
+            root.Children.Add(previewBorder);
+
+            Slider slOpacity = null;
+            Slider slBlur = null;
+            CheckBox chkBgEnable = null;
+            RadioButton rbCustom = null;
+            RadioButton rbSync = null;
+            if (isBackground)
+            {
+                var topCtrlRow = new DockPanel { Margin = new Thickness(0, 8, 0, 4) };
+                chkBgEnable = new CheckBox
+                {
+                    Content = "Enable background",
+                    FontSize = 12.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = theme.TextPrimary,
+                    IsChecked = initBgEnabled,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Cursor = Cursors.Hand
+                };
+                DockPanel.SetDock(chkBgEnable, Dock.Left);
+
+                var modePanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+                rbCustom = new RadioButton
+                {
+                    Content = "Custom image",
+                    GroupName = "bgMode",
+                    FontSize = 12,
+                    Foreground = theme.TextPrimary,
+                    IsChecked = (initBgMode == 0),
+                    Margin = new Thickness(0, 0, 10, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Cursor = Cursors.Hand
+                };
+                rbSync = new RadioButton
+                {
+                    Content = "Sync with playing",
+                    GroupName = "bgMode",
+                    FontSize = 12,
+                    Foreground = theme.TextPrimary,
+                    IsChecked = (initBgMode == 1),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Cursor = Cursors.Hand
+                };
+                modePanel.Children.Add(rbCustom);
+                modePanel.Children.Add(rbSync);
+                topCtrlRow.Children.Add(chkBgEnable);
+                topCtrlRow.Children.Add(modePanel);
+
+                var opHeader = new DockPanel { Margin = new Thickness(0, 6, 0, 2) };
+                var lblOp = CreateFieldLabel("Opacity");
+                lblOp.Margin = new Thickness(0);
+                DockPanel.SetDock(lblOp, Dock.Left);
+
+                var tvOpVal = new TextBlock
+                {
+                    Text = initOp + "%",
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = theme.TextPrimary,
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+                opHeader.Children.Add(lblOp);
+                opHeader.Children.Add(tvOpVal);
+
+                slOpacity = new Slider
+                {
+                    Minimum = 5,
+                    Maximum = 100,
+                    Value = initOp,
+                    TickFrequency = 1,
+                    IsSnapToTickEnabled = true,
+                    Margin = new Thickness(0, 2, 0, 2)
+                };
+
+                var blurHeader = new DockPanel { Margin = new Thickness(0, 6, 0, 2) };
+                var lblBlur = CreateFieldLabel("Blur");
+                lblBlur.Margin = new Thickness(0);
+                DockPanel.SetDock(lblBlur, Dock.Left);
+
+                var tvBlurVal = new TextBlock
+                {
+                    Text = initBlur.ToString(),
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = theme.TextPrimary,
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+                blurHeader.Children.Add(lblBlur);
+                blurHeader.Children.Add(tvBlurVal);
+
+                slBlur = new Slider
+                {
+                    Minimum = 0,
+                    Maximum = 25,
+                    Value = initBlur,
+                    TickFrequency = 1,
+                    IsSnapToTickEnabled = true,
+                    Margin = new Thickness(0, 2, 0, 2)
+                };
+
+                Action refreshBgPreview = delegate
+                {
+                    bool en = chkBgEnable.IsChecked == true;
+                    int mode = (rbSync.IsChecked == true) ? 1 : 0;
+                    inputRow.IsEnabled = (mode == 0);
+                    inputRow.Opacity = (mode == 0) ? 1.0 : 0.45;
+                    if (!en)
+                    {
+                        ivPreview.Source = null;
+                        tvPreviewEmpty.Text = "Background disabled";
+                        tvPreviewEmpty.Visibility = Visibility.Visible;
+                        return;
+                    }
+                    string activeB64 = (mode == 1)
+                        ? (backend != null ? backend.GetCurrentMediaThumbBase64() : "")
+                        : (!string.IsNullOrEmpty(previewB64) ? previewB64 : savedCustomB64);
+                    var bmp = DecodeBase64Bitmap(activeB64);
+                    ivPreview.Source = bmp;
+                    tvPreviewEmpty.Text = (mode == 1) ? "Waiting for media cover" : "No custom image";
+                    tvPreviewEmpty.Visibility = (bmp != null) ? Visibility.Collapsed : Visibility.Visible;
+                };
+
+                Action pushBgStyle = delegate
+                {
+                    if (backend != null)
+                    {
+                        backend.SetBackgroundStyle(
+                            chkBgEnable.IsChecked == true,
+                            (rbSync.IsChecked == true) ? 1 : 0,
+                            (int)Math.Round(slOpacity.Value),
+                            (int)Math.Round(slBlur.Value)
+                        );
+                    }
+                };
+
+                chkBgEnable.Checked += delegate { refreshBgPreview(); pushBgStyle(); };
+                chkBgEnable.Unchecked += delegate { refreshBgPreview(); pushBgStyle(); };
+                rbCustom.Checked += delegate { refreshBgPreview(); pushBgStyle(); };
+                rbSync.Checked += delegate { refreshBgPreview(); pushBgStyle(); };
+                slOpacity.ValueChanged += delegate
+                {
+                    int v = (int)Math.Round(slOpacity.Value);
+                    tvOpVal.Text = v + "%";
+                    ivPreview.Opacity = v / 100.0;
+                    pushBgStyle();
+                };
+                slBlur.ValueChanged += delegate
+                {
+                    int b = (int)Math.Round(slBlur.Value);
+                    tvBlurVal.Text = b.ToString();
+                    blurEffect.Radius = b;
+                    pushBgStyle();
+                };
+
+                root.Children.Add(topCtrlRow);
+                root.Children.Add(opHeader);
+                root.Children.Add(slOpacity);
+                root.Children.Add(blurHeader);
+                root.Children.Add(slBlur);
+                refreshBgPreview();
+            }
+
+            root.Children.Add(tvStatus);
+
+            var actionRow = new DockPanel { Margin = new Thickness(0, 12, 0, 0) };
+            var leftBtns = new StackPanel { Orientation = Orientation.Horizontal };
+            var btnClear = CreateFluentButton(isBackground ? "Clear saved" : "Clear", false, new Thickness(12, 6, 12, 6));
+            btnClear.FontSize = 12.5;
+            btnClear.Click += delegate
+            {
+                if (backend != null)
+                {
+                    if (isBackground)
+                    {
+                        backend.SetBackgroundImage("");
+                        savedCustomB64 = "";
+                        previewB64 = "";
+                        tbSrc.Text = "";
+                        tvStatus.Text = "Saved custom image cleared";
+                        if (rbCustom != null && rbCustom.IsChecked == true)
+                        {
+                            ivPreview.Source = null;
+                            tvPreviewEmpty.Text = "No custom image";
+                            tvPreviewEmpty.Visibility = Visibility.Visible;
+                        }
+                        ShowFeedback("Saved background cleared");
+                        return;
+                    }
+                    else
+                    {
+                        backend.SetPushImage("");
+                    }
+                }
+                ShowFeedback("Image cleared");
+                dlg.Close();
+            };
+            leftBtns.Children.Add(btnClear);
+
+            if (isBackground)
+            {
+                var btnLoadSaved = CreateFluentButton("Load saved", false, new Thickness(10, 6, 10, 6));
+                btnLoadSaved.FontSize = 12.5;
+                btnLoadSaved.Margin = new Thickness(6, 0, 0, 0);
+                btnLoadSaved.Click += delegate
+                {
+                    savedCustomB64 = backend != null ? backend.GetBackgroundBase64() : "";
+                    if (string.IsNullOrEmpty(savedCustomB64))
+                    {
+                        tvStatus.Text = "No saved background found";
+                        return;
+                    }
+                    previewB64 = savedCustomB64;
+                    tbSrc.Text = "";
+                    if (rbCustom != null) rbCustom.IsChecked = true;
+                    if (chkBgEnable != null) chkBgEnable.IsChecked = true;
+                    var bmp = DecodeBase64Bitmap(savedCustomB64);
+                    ivPreview.Source = bmp;
+                    tvPreviewEmpty.Visibility = (bmp != null) ? Visibility.Collapsed : Visibility.Visible;
+                    tvStatus.Text = "Loaded saved background";
+                };
+                leftBtns.Children.Add(btnLoadSaved);
+            }
+            DockPanel.SetDock(leftBtns, Dock.Left);
+
+            var rightBtns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var btnSend = CreateFluentButton(isBackground ? "Apply" : "Send", true, new Thickness(16, 6, 16, 6));
+            btnSend.FontSize = 12.5;
+            btnSend.Click += delegate
+            {
+                string src = (tbSrc.Text ?? "").Trim();
+                if (isBackground && slOpacity != null && slBlur != null && chkBgEnable != null && rbSync != null && backend != null)
+                {
+                    backend.SetBackgroundStyle(
+                        chkBgEnable.IsChecked == true,
+                        (rbSync.IsChecked == true) ? 1 : 0,
+                        (int)Math.Round(slOpacity.Value),
+                        (int)Math.Round(slBlur.Value)
+                    );
+                }
+                if (isBackground && string.IsNullOrEmpty(src))
+                {
+                    ShowFeedback("Background updated");
+                    dlg.Close();
+                    return;
+                }
+                if (string.IsNullOrEmpty(src) && string.IsNullOrEmpty(previewB64))
+                {
+                    tvStatus.Text = "Enter a URL or choose a file";
+                    return;
+                }
+                btnSend.IsEnabled = false;
+                tvStatus.Text = "Loading image...";
+                System.Threading.ThreadPool.QueueUserWorkItem(delegate
+                {
+                    string b64 = previewB64;
+                    if (!string.IsNullOrEmpty(src))
+                    {
+                        try
+                        {
+                            b64 = WinRtHelper.LoadAndEncodeImageBase64(src, isBackground ? 800 : 960, isBackground ? 480 : 540, 82L);
+                        }
+                        catch { b64 = ""; }
+                    }
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        btnSend.IsEnabled = true;
+                        if (string.IsNullOrEmpty(b64))
+                        {
+                            tvStatus.Text = "Failed to load image";
+                            return;
+                        }
+                        if (backend != null)
+                        {
+                            if (isBackground) backend.SetBackgroundImage(b64);
+                            else backend.SetPushImage(b64);
+                        }
+                        ShowFeedback(isBackground ? "Background updated" : "Image sent");
+                        dlg.Close();
+                    }));
+                });
+            };
+            rightBtns.Children.Add(btnSend);
+
+            actionRow.Children.Add(leftBtns);
+            actionRow.Children.Add(rightBtns);
+            root.Children.Add(actionRow);
+
+            dlg.Content = root;
+            dlg.ShowDialog();
+        }
+
         private void ToggleServerEnabled()
         {
             serverEnabled = !serverEnabled;
@@ -1224,6 +1868,7 @@ namespace PCMonitorServer
         {
             if (flag && VisibleL3ComponentCount() <= 1)
             {
+                UpdateOptionHighlights();
                 ShowFeedback("Keep at least 1 component");
                 return;
             }
@@ -1237,6 +1882,7 @@ namespace PCMonitorServer
         {
             if (remoteLayout == 2 && remoteShowPlaying && VisibleL3ComponentCount() <= 1)
             {
+                UpdateOptionHighlights();
                 ShowFeedback("Keep at least 1 component");
                 return;
             }
@@ -1244,6 +1890,38 @@ namespace PCMonitorServer
             UpdateOptionHighlights();
             SendRemoteConfig();
             ShowFeedback(remoteShowPlaying ? "Playing on" : "Playing off");
+        }
+
+        private CheckBox CreateMediaCheckBox(string text, Action onToggle)
+        {
+            var cb = new CheckBox();
+            cb.Content = text;
+            cb.FontSize = 12;
+            cb.Foreground = theme.TextPrimary;
+            cb.VerticalContentAlignment = VerticalAlignment.Center;
+            cb.Margin = new Thickness(0, 3, 6, 3);
+            cb.Cursor = Cursors.Hand;
+            cb.Checked += delegate { if (!suppressCheckEvents) onToggle(); };
+            cb.Unchecked += delegate { if (!suppressCheckEvents) onToggle(); };
+            return cb;
+        }
+
+        private Button CreateActionGridButton(string text, RoutedEventHandler onClick)
+        {
+            var btn = CreateFluentButton(text, false, new Thickness(10, 5, 10, 5));
+            btn.FontSize = 12;
+            btn.FontWeight = FontWeights.Normal;
+            btn.HorizontalAlignment = HorizontalAlignment.Stretch;
+            btn.Click += onClick;
+            return btn;
+        }
+
+        private void SetCheckState(CheckBox cb, bool isChecked, bool enabled)
+        {
+            if (cb == null) return;
+            cb.IsChecked = isChecked;
+            cb.IsEnabled = enabled;
+            cb.Opacity = enabled ? 1.0 : 0.38;
         }
 
         private void UpdateOptionHighlights()
@@ -1257,27 +1935,41 @@ namespace PCMonitorServer
                 StyleOptionButton(btnFonts[i], i == remoteFont, true);
             }
 
-            // Layout 3 individual components
             bool isL3 = (remoteLayout == 2);
-            StyleOptionButton(btnL3Task, l3ShowTask, isL3);
-            StyleOptionButton(btnL3Timer, l3ShowTimer, isL3);
-            StyleOptionButton(btnL3Rings, l3ShowRings, isL3);
-            StyleOptionButton(btnL3Notif, l3ShowNotif, isL3);
-
-            // Now Playing exists on Layout 2 (idx 1) and Layout 3 (idx 2); OS Notif shares pane on Layout 3
             bool hasPlaying = (remoteLayout == 1 || remoteLayout == 2);
             bool canSwap = (remoteLayout == 1 && remoteShowPlaying) ||
                            (isL3 && (l3ShowTask || l3ShowTimer || l3ShowRings) && (remoteShowPlaying || l3ShowNotif));
-            StyleOptionButton(btnPlaying, remoteShowPlaying, hasPlaying);
-            StyleOptionButton(btnSwapSide, remotePlayingLeft, canSwap);
+
+            suppressCheckEvents = true;
+            SetCheckState(chkL3Task, l3ShowTask, isL3);
+            SetCheckState(chkL3Timer, l3ShowTimer, isL3);
+            SetCheckState(chkL3Rings, l3ShowRings, isL3);
+            SetCheckState(chkPlaying, remoteShowPlaying, hasPlaying);
+            SetCheckState(chkL3Notif, l3ShowNotif, isL3);
+            SetCheckState(chkShowTopBar, remoteShowTopBar, hasPlaying);
+            SetCheckState(chkShowLogo, remoteShowLogo, true);
+            SetCheckState(chkSwapSide, remotePlayingLeft, canSwap);
+            SetCheckState(chkFullscreen, remoteFullscreen, true);
+            SetCheckState(chkStartWithWin, startWithWindows, true);
+            SetCheckState(chkShowOnStart, showWindowOnStartup, true);
+            suppressCheckEvents = false;
+
             if (btnTimeMode != null)
             {
-                btnTimeMode.Content = "Time mode " + (remoteTimeMode + 1);
+                btnTimeMode.Content = "Time mode: " + (remoteTimeMode + 1);
                 StyleOptionButton(btnTimeMode, false, hasPlaying && remoteShowPlaying);
             }
             StyleOptionButton(btnL3Resize, false, isL3);
-            StyleOptionButton(btnShowTopBar, remoteShowTopBar, hasPlaying);
-            StyleOptionButton(btnShowLogo, remoteShowLogo, true);
+            StyleOptionButton(btnPushImage, backend != null && backend.HasPushImage, hasActiveClient);
+            StyleOptionButton(btnBackground, backend != null && backend.CfgBgEnabled && (backend.HasBackgroundImage || backend.CfgBgMode == 1), true);
+            if (tbPort != null && btnApplyPort != null && portBoxBorder != null)
+            {
+                bool canEditPort = !serverEnabled;
+                tbPort.IsEnabled = canEditPort;
+                btnApplyPort.IsEnabled = canEditPort;
+                portBoxBorder.Opacity = canEditPort ? 1.0 : 0.45;
+                btnApplyPort.Opacity = canEditPort ? 1.0 : 0.45;
+            }
 
             // Timer & Pomodoro exists only on Layout 3 (idx 2)
             bool hasTimer = isL3 && l3ShowTimer;
@@ -1290,8 +1982,6 @@ namespace PCMonitorServer
             {
                 StyleOptionButton(pb, false, hasActiveClient);
             }
-            StyleOptionButton(btnStartWithWin, startWithWindows, true);
-            StyleOptionButton(btnShowOnStart, showWindowOnStartup, true);
         }
 
         private const string StartupRegPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -1348,6 +2038,7 @@ namespace PCMonitorServer
             }
             else
             {
+                UpdateOptionHighlights();
                 ShowFeedback("Failed to update startup");
             }
         }
@@ -1429,7 +2120,8 @@ namespace PCMonitorServer
                 l3TextScale,
                 l3MetricScale,
                 remoteShowTopBar,
-                remoteShowLogo
+                remoteShowLogo,
+                remoteFullscreen
             );
         }
 
@@ -1546,6 +2238,7 @@ namespace PCMonitorServer
             backend = new MonitorServer(baseDir);
             startWithWindows = ReadStartupRegistry();
             showWindowOnStartup = backend.ShowWindowOnStartup;
+            if (tbPort != null) tbPort.Text = backend.TcpPort.ToString();
             tbTask.Text = backend.CurrentTask;
             tbNote.Text = backend.CurrentNote;
             currentDueText = backend.CurrentDue;
@@ -1610,8 +2303,11 @@ namespace PCMonitorServer
                 rowUsb.Visibility = Visibility.Visible;
                 rowBluetooth.Visibility = Visibility.Visible;
 
-                tvLocalNet.Text = string.Format("Local network: {0}:{1}", localIp, MonitorServer.TcpPort);
-                tvUsb.Text = backend.UsbReady ? "USB: ready on port 8765" : "USB: waiting on port 8765";
+                localIp = MonitorServer.GetLocalIp();
+                tvLocalNet.Text = string.Format("Local network: {0}:{1}", localIp, backend.TcpPort);
+                tvUsb.Text = backend.UsbReady
+                    ? ("USB: ready on port " + backend.TcpPort)
+                    : ("USB: waiting on port " + backend.TcpPort);
                 tvBluetooth.Text = backend.BtStatus;
             }
 
@@ -1631,6 +2327,7 @@ namespace PCMonitorServer
             l3MetricScale = backend.CfgL3MetricScale;
             remoteShowTopBar = backend.CfgShowTopBar;
             remoteShowLogo = backend.CfgShowLogo;
+            remoteFullscreen = backend.CfgFullscreen;
             UpdateOptionHighlights();
         }
 

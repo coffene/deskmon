@@ -320,6 +320,67 @@ namespace PCMonitorServer
             }
         }
 
+        public static string LoadAndEncodeImageBase64(string source, int maxW, int maxH, long quality)
+        {
+            if (string.IsNullOrWhiteSpace(source)) return "";
+            source = source.Trim().Trim('"');
+            byte[] raw;
+            if (source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                source.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+                using (var wc = new WebClient())
+                {
+                    wc.Headers.Add("User-Agent", "Deskmon/1.0");
+                    raw = wc.DownloadData(source);
+                }
+            }
+            else if (File.Exists(source))
+            {
+                raw = File.ReadAllBytes(source);
+            }
+            else
+            {
+                return "";
+            }
+            if (raw == null || raw.Length == 0 || raw.Length > 20000000) return "";
+            using (var msIn = new MemoryStream(raw))
+            using (var src = new Bitmap(msIn))
+            {
+                int tw = src.Width;
+                int th = src.Height;
+                if (tw > maxW || th > maxH)
+                {
+                    double scale = Math.Min((double)maxW / tw, (double)maxH / th);
+                    tw = Math.Max(1, (int)Math.Round(tw * scale));
+                    th = Math.Max(1, (int)Math.Round(th * scale));
+                }
+                using (var dst = new Bitmap(tw, th, PixelFormat.Format24bppRgb))
+                using (var g = Graphics.FromImage(dst))
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(src, 0, 0, tw, th);
+                    using (var msOut = new MemoryStream())
+                    {
+                        ImageCodecInfo jpgCodec = GetJpegCodec();
+                        if (jpgCodec != null)
+                        {
+                            using (var ep = new EncoderParameters(1))
+                            {
+                                ep.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
+                                dst.Save(msOut, jpgCodec, ep);
+                            }
+                        }
+                        else
+                        {
+                            dst.Save(msOut, ImageFormat.Jpeg);
+                        }
+                        return Convert.ToBase64String(msOut.ToArray());
+                    }
+                }
+            }
+        }
+
         private static ImageCodecInfo GetJpegCodec()
         {
             foreach (var c in ImageCodecInfo.GetImageEncoders())
@@ -332,10 +393,12 @@ namespace PCMonitorServer
 
     internal sealed class MonitorServer
     {
-        public const int TcpPort = 8765;
+        public const int DefaultTcpPort = 8765;
+        public int TcpPort { get; private set; }
         public const int DiscoveryPort = 8766;
 
         private readonly string configPath;
+        private readonly string bgPath;
         private readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 };
         private readonly object stateLock = new object();
         private readonly object clientLock = new object();
@@ -344,6 +407,8 @@ namespace PCMonitorServer
         private string activeChannel = "";
         private int clientLastThumbSeq = -1;
         private int clientLastNotifSeq = -1;
+        private int clientLastPushImgSeq = -1;
+        private int clientLastBgSeq = -1;
 
         private volatile bool running;
         public bool Enabled { get; private set; }
@@ -375,6 +440,11 @@ namespace PCMonitorServer
         public int CfgL3MetricScale = 100;
         public bool CfgShowTopBar = true;
         public bool CfgShowLogo = true;
+        public bool CfgFullscreen = false;
+        public bool CfgBgEnabled = true;
+        public int CfgBgMode = 0; // 0 = Custom image, 1 = Sync with playing
+        public int CfgBgOpacity = 32;
+        public int CfgBgBlur = 6;
         public bool StartWithWindows = false;
         public bool ShowWindowOnStartup = true;
 
@@ -399,15 +469,109 @@ namespace PCMonitorServer
         private bool notifAccessOk = true;
         private bool notifAccessRequested = false;
 
+        private int pushImgSeq = 0;
+        private string pushImgB64 = "";
+        private int bgSeq = 1;
+        private string bgB64 = "";
+        public bool HasPushImage { get { lock (stateLock) return !string.IsNullOrEmpty(pushImgB64); } }
+        public bool HasBackgroundImage { get { lock (stateLock) return !string.IsNullOrEmpty(bgB64); } }
+
         public event Action StateChanged;
 
         public MonitorServer(string baseDir)
         {
             configPath = Path.Combine(baseDir, "server_config.json");
+            bgPath = Path.Combine(baseDir, "server_bg.jpg");
+            TcpPort = DefaultTcpPort;
             BtStatus = "Bluetooth: starting";
             Enabled = true;
             Native.GetSystemTimes(out prevIdle, out prevKernel, out prevUser);
             LoadConfig();
+            LoadSavedBackground();
+        }
+
+        private void LoadSavedBackground()
+        {
+            try
+            {
+                if (File.Exists(bgPath))
+                {
+                    byte[] raw = File.ReadAllBytes(bgPath);
+                    if (raw != null && raw.Length > 0 && raw.Length < 1024 * 1024)
+                    {
+                        lock (stateLock)
+                        {
+                            bgB64 = Convert.ToBase64String(raw);
+                            bgSeq = 1;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        public void SetPushImage(string b64)
+        {
+            lock (stateLock)
+            {
+                pushImgB64 = b64 ?? "";
+                pushImgSeq++;
+            }
+            NotifyStateChanged();
+            PushNow();
+        }
+
+        public string GetBackgroundBase64()
+        {
+            lock (stateLock) return bgB64 ?? "";
+        }
+
+        public string GetCurrentMediaThumbBase64()
+        {
+            return cachedThumbB64 ?? "";
+        }
+
+        public void SetBackgroundStyle(bool enabled, int mode, int opacity, int blur)
+        {
+            int nextMode = Clamp(mode, 0, 1);
+            int nextOp = Clamp(opacity, 5, 100);
+            int nextBlur = Clamp(blur, 0, 25);
+            lock (stateLock)
+            {
+                if (CfgBgEnabled == enabled && CfgBgMode == nextMode && CfgBgOpacity == nextOp && CfgBgBlur == nextBlur) return;
+                CfgBgEnabled = enabled;
+                CfgBgMode = nextMode;
+                CfgBgOpacity = nextOp;
+                CfgBgBlur = nextBlur;
+                CfgSeq++;
+            }
+            SaveConfig();
+            NotifyStateChanged();
+            PushNow();
+        }
+
+        public void SetBackgroundImage(string b64)
+        {
+            string clean = b64 ?? "";
+            try
+            {
+                if (string.IsNullOrEmpty(clean))
+                {
+                    if (File.Exists(bgPath)) File.Delete(bgPath);
+                }
+                else
+                {
+                    File.WriteAllBytes(bgPath, Convert.FromBase64String(clean));
+                }
+            }
+            catch { }
+            lock (stateLock)
+            {
+                bgB64 = clean;
+                bgSeq++;
+            }
+            NotifyStateChanged();
+            PushNow();
         }
 
         public bool HasActiveClient()
@@ -439,6 +603,12 @@ namespace PCMonitorServer
             if (d.ContainsKey("l3_metric_scale")) CfgL3MetricScale = Clamp(Convert.ToInt32(d["l3_metric_scale"]), 80, 125);
             if (d.ContainsKey("show_top_bar")) CfgShowTopBar = Convert.ToBoolean(d["show_top_bar"]);
             if (d.ContainsKey("show_logo")) CfgShowLogo = Convert.ToBoolean(d["show_logo"]);
+            if (d.ContainsKey("fullscreen")) CfgFullscreen = Convert.ToBoolean(d["fullscreen"]);
+            if (d.ContainsKey("bg_enabled")) CfgBgEnabled = Convert.ToBoolean(d["bg_enabled"]);
+            if (d.ContainsKey("bg_mode")) CfgBgMode = Clamp(Convert.ToInt32(d["bg_mode"]), 0, 1);
+            else if (d.ContainsKey("bg_sync_playing")) CfgBgMode = Convert.ToBoolean(d["bg_sync_playing"]) ? 1 : 0;
+            if (d.ContainsKey("bg_opacity")) CfgBgOpacity = Clamp(Convert.ToInt32(d["bg_opacity"]), 5, 100);
+            if (d.ContainsKey("bg_blur")) CfgBgBlur = Clamp(Convert.ToInt32(d["bg_blur"]), 0, 25);
         }
 
         private void LoadConfig()
@@ -457,6 +627,7 @@ namespace PCMonitorServer
                     if (d.ContainsKey("note") && d["note"] != null) CurrentNote = d["note"].ToString();
                     if (d.ContainsKey("start_with_windows")) StartWithWindows = Convert.ToBoolean(d["start_with_windows"]);
                     if (d.ContainsKey("show_window_on_startup")) ShowWindowOnStartup = Convert.ToBoolean(d["show_window_on_startup"]);
+                    if (d.ContainsKey("tcp_port")) TcpPort = Clamp(Convert.ToInt32(d["tcp_port"]), 1024, 65535);
                 }
             }
             catch { }
@@ -470,6 +641,21 @@ namespace PCMonitorServer
                 ShowWindowOnStartup = showWinOnStart;
             }
             SaveConfig();
+        }
+
+        public void SetPort(int port)
+        {
+            int next = Clamp(port, 1024, 65535);
+            if (next == TcpPort) return;
+            bool wasEnabled = Enabled;
+            if (wasEnabled) Stop();
+            lock (stateLock)
+            {
+                TcpPort = next;
+            }
+            SaveConfig();
+            if (wasEnabled) Start();
+            else NotifyStateChanged();
         }
 
         private void SaveConfig()
@@ -496,11 +682,17 @@ namespace PCMonitorServer
                         { "l3_metric_scale", CfgL3MetricScale },
                         { "show_top_bar", CfgShowTopBar },
                         { "show_logo", CfgShowLogo },
+                        { "fullscreen", CfgFullscreen },
+                        { "bg_enabled", CfgBgEnabled },
+                        { "bg_mode", CfgBgMode },
+                        { "bg_opacity", CfgBgOpacity },
+                        { "bg_blur", CfgBgBlur },
                         { "task", CurrentTask },
                         { "due", CurrentDue },
                         { "note", CurrentNote },
                         { "start_with_windows", StartWithWindows },
-                        { "show_window_on_startup", ShowWindowOnStartup }
+                        { "show_window_on_startup", ShowWindowOnStartup },
+                        { "tcp_port", TcpPort }
                     };
                 }
                 File.WriteAllText(configPath, json.Serialize(d), Encoding.UTF8);
@@ -524,7 +716,7 @@ namespace PCMonitorServer
             int layout, int font, bool showPlaying, bool playingLeft, int timeMode,
             bool l3Task, bool l3Timer, bool l3Rings, bool l3Notif,
             int l3Split, int l3RightSplit, int l3Text, int l3Metric,
-            bool showTopBar, bool showLogo)
+            bool showTopBar, bool showLogo, bool fullscreen)
         {
             lock (stateLock)
             {
@@ -544,6 +736,7 @@ namespace PCMonitorServer
                 CfgL3MetricScale = Clamp(l3Metric, 80, 125);
                 CfgShowTopBar = showTopBar;
                 CfgShowLogo = showLogo;
+                CfgFullscreen = fullscreen;
             }
             SaveConfig();
             PushNow();
@@ -923,12 +1116,14 @@ namespace PCMonitorServer
         {
             if (!running) return;
             IClientTransport client;
-            int lastThumb, lastNotif;
+            int lastThumb, lastNotif, lastPushImg, lastBg;
             lock (clientLock)
             {
                 client = activeClient;
                 lastThumb = clientLastThumbSeq;
                 lastNotif = clientLastNotifSeq;
+                lastPushImg = clientLastPushImgSeq;
+                lastBg = clientLastBgSeq;
             }
             if (client == null) return;
 
@@ -963,6 +1158,8 @@ namespace PCMonitorServer
             bool notifSync = (notifSeq != lastNotif);
             string activePowerCmd = "";
             int curPowerSeq = 0;
+            int curPushImgSeq = 0;
+            int curBgSeq = 0;
 
             var snap = new Dictionary<string, object>();
             lock (stateLock)
@@ -1004,6 +1201,11 @@ namespace PCMonitorServer
                 snap["cfg_l3_metric_scale"] = CfgL3MetricScale;
                 snap["cfg_show_top_bar"] = CfgShowTopBar;
                 snap["cfg_show_logo"] = CfgShowLogo;
+                snap["cfg_fullscreen"] = CfgFullscreen;
+                snap["cfg_bg_enabled"] = CfgBgEnabled;
+                snap["cfg_bg_mode"] = CfgBgMode;
+                snap["cfg_bg_opacity"] = CfgBgOpacity;
+                snap["cfg_bg_blur"] = CfgBgBlur;
                 snap["timer_seq"] = timerSeq;
                 snap["timer_cmd"] = timerCmd;
                 snap["timer_val"] = timerVal;
@@ -1013,6 +1215,12 @@ namespace PCMonitorServer
                 snap["notif_access"] = notifAccessOk;
                 snap["notif_sync"] = notifSync;
                 snap["notifications"] = notifSync ? cachedNotifs : new List<Dictionary<string, object>>();
+                curPushImgSeq = pushImgSeq;
+                curBgSeq = bgSeq;
+                snap["push_img_seq"] = curPushImgSeq;
+                snap["push_img_b64"] = (curPushImgSeq != lastPushImg) ? pushImgB64 : "";
+                snap["bg_seq"] = curBgSeq;
+                snap["bg_b64"] = (curBgSeq != lastBg) ? bgB64 : "";
             }
             foreach (var kv in media) snap[kv.Key] = kv.Value;
 
@@ -1038,6 +1246,8 @@ namespace PCMonitorServer
                     {
                         clientLastThumbSeq = curThumb;
                         clientLastNotifSeq = notifSeq;
+                        clientLastPushImgSeq = curPushImgSeq;
+                        clientLastBgSeq = curBgSeq;
                     }
                 }
             }
@@ -1060,6 +1270,8 @@ namespace PCMonitorServer
                 activeChannel = channelName;
                 clientLastThumbSeq = -1;
                 clientLastNotifSeq = -1;
+                clientLastPushImgSeq = -1;
+                clientLastBgSeq = -1;
             }
             lock (stateLock)
             {
@@ -1264,24 +1476,57 @@ namespace PCMonitorServer
             }
         }
 
+        private static bool IsTailscaleOrApipa(IPAddress addr)
+        {
+            byte[] b = addr.GetAddressBytes();
+            if (b.Length != 4) return true;
+            if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT / Tailscale
+            if (b[0] == 169 && b[1] == 254) return true; // APIPA
+            return false;
+        }
+
+        private static bool IsVirtualAdapter(NetworkInterface ni)
+        {
+            if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel ||
+                ni.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+            {
+                return true;
+            }
+            string info = ((ni.Name ?? "") + " " + (ni.Description ?? "")).ToLowerInvariant();
+            string[] skip = new string[]
+            {
+                "tailscale", "wireguard", "zerotier", "vpn", "virtual", "vethernet",
+                "hyper-v", "wsl", "docker", "vmware", "virtualbox", "radmin", "hamachi"
+            };
+            for (int i = 0; i < skip.Length; i++)
+            {
+                if (info.Contains(skip[i])) return true;
+            }
+            return false;
+        }
+
         public static string GetLocalIp()
         {
+            string fallback = null;
             try
             {
                 foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
                 {
-                    if (ni.OperationalStatus != OperationalStatus.Up || ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-                    foreach (var ua in ni.GetIPProperties().UnicastAddresses)
+                    if (ni.OperationalStatus != OperationalStatus.Up || IsVirtualAdapter(ni)) continue;
+                    var ipProps = ni.GetIPProperties();
+                    bool hasGateway = ipProps.GatewayAddresses != null && ipProps.GatewayAddresses.Count > 0;
+                    foreach (var ua in ipProps.UnicastAddresses)
                     {
-                        if (ua.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ua.Address))
-                        {
-                            return ua.Address.ToString();
-                        }
+                        if (ua.Address.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(ua.Address)) continue;
+                        if (IsTailscaleOrApipa(ua.Address)) continue;
+                        string ip = ua.Address.ToString();
+                        if (hasGateway) return ip;
+                        if (fallback == null) fallback = ip;
                     }
                 }
             }
             catch { }
-            return "127.0.0.1";
+            return fallback ?? "127.0.0.1";
         }
     }
 }

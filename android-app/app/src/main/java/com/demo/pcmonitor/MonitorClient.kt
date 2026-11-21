@@ -337,7 +337,12 @@ class MonitorClient(
         l3TextScale: Int,
         l3MetricScale: Int,
         showTopBar: Boolean,
-        showLogo: Boolean
+        showLogo: Boolean,
+        fullscreen: Boolean,
+        bgEnabled: Boolean,
+        bgMode: Int,
+        bgOpacity: Int,
+        bgBlur: Int
     ) {
         val obj = JSONObject()
             .put("cmd", "client_cfg")
@@ -356,6 +361,11 @@ class MonitorClient(
             .put("l3_metric_scale", l3MetricScale)
             .put("show_top_bar", showTopBar)
             .put("show_logo", showLogo)
+            .put("fullscreen", fullscreen)
+            .put("bg_enabled", bgEnabled)
+            .put("bg_mode", bgMode)
+            .put("bg_opacity", bgOpacity)
+            .put("bg_blur", bgBlur)
         sendJson(obj)
     }
 

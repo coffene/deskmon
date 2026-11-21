@@ -45,6 +45,11 @@ data class ResourceSnapshot(
     val cfgL3MetricScale: Int,
     val cfgShowTopBar: Boolean,
     val cfgShowLogo: Boolean,
+    val cfgFullscreen: Boolean,
+    val cfgBgEnabled: Boolean,
+    val cfgBgMode: Int,
+    val cfgBgOpacity: Int,
+    val cfgBgBlur: Int,
     val timerSeq: Int,
     val timerCmd: String,
     val timerVal: Int,
@@ -53,7 +58,11 @@ data class ResourceSnapshot(
     val notifSeq: Int,
     val notifAccess: Boolean,
     val notifSync: Boolean,
-    val notifications: List<OsNotification>
+    val notifications: List<OsNotification>,
+    val pushImgSeq: Int,
+    val pushImgBase64: String,
+    val bgSeq: Int,
+    val bgBase64: String
 ) {
     companion object {
         fun fromJson(line: String): ResourceSnapshot {
@@ -113,6 +122,11 @@ data class ResourceSnapshot(
                 cfgL3MetricScale = obj.optInt("cfg_l3_metric_scale", 100),
                 cfgShowTopBar = obj.optBoolean("cfg_show_top_bar", true),
                 cfgShowLogo = obj.optBoolean("cfg_show_logo", true),
+                cfgFullscreen = obj.optBoolean("cfg_fullscreen", false),
+                cfgBgEnabled = obj.optBoolean("cfg_bg_enabled", true),
+                cfgBgMode = obj.optInt("cfg_bg_mode", 0),
+                cfgBgOpacity = obj.optInt("cfg_bg_opacity", 32),
+                cfgBgBlur = obj.optInt("cfg_bg_blur", 6),
                 timerSeq = obj.optInt("timer_seq", 0),
                 timerCmd = obj.optString("timer_cmd", ""),
                 timerVal = obj.optInt("timer_val", 25),
@@ -121,7 +135,11 @@ data class ResourceSnapshot(
                 notifSeq = obj.optInt("notif_seq", 0),
                 notifAccess = obj.optBoolean("notif_access", true),
                 notifSync = notifSync,
-                notifications = notifList
+                notifications = notifList,
+                pushImgSeq = obj.optInt("push_img_seq", 0),
+                pushImgBase64 = obj.optString("push_img_b64", ""),
+                bgSeq = obj.optInt("bg_seq", 0),
+                bgBase64 = obj.optString("bg_b64", "")
             )
         }
     }
